@@ -3,3 +3,7 @@ uvicorn[standard]
 anthropic
 supabase
 python-dotenv
+pydantic-ai
+pytest
+pytest-asyncio
+httpx
