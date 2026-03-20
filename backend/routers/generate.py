@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from pydantic import BaseModel
 import anthropic
 import os
@@ -15,7 +15,7 @@ class GenerateRequest(BaseModel):
 @router.post("/generate")
 async def generate(body: GenerateRequest):
     message = client.messages.create(
-        model="claude-haiku-4-5-20251001",
+        model="claude-haiku-4-5",
         max_tokens=300,
         messages=[{"role": "user", "content": body.prompt}],
     )
