@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 
 const API_URL = import.meta.env.VITE_API_URL
 
-export default function Chat() {
+export default function Chat({ campaignId }) {
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -32,7 +32,7 @@ export default function Chat() {
       const res = await fetch(`${API_URL}/api/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: updatedMessages }),
+        body: JSON.stringify({ messages: updatedMessages, campaign_id: campaignId }),
       })
 
       const data = await res.json()
@@ -49,7 +49,11 @@ export default function Chat() {
     <div style={styles.container}>
       <div style={styles.messages}>
         {messages.length === 0 && (
-          <p style={styles.empty}>Start a conversation...</p>
+          <p style={styles.empty}>
+            {campaignId
+              ? 'Ask me about this campaign\u2019s sessions and lore...'
+              : 'Start a conversation...'}
+          </p>
         )}
         {messages.map((msg, i) => (
           <div key={i} style={{ ...styles.bubble, ...(msg.role === 'user' ? styles.user : styles.assistant) }}>
