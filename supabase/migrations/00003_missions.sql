@@ -416,6 +416,60 @@ create policy "Author or DM can delete submissions"
     )
   );
 
+  -- ============================================================================
+-- TOME — Campaign Helper Functions
+-- Auto-add DM on campaign creation + join_campaign RPC
+-- ============================================================================
+
+-- ============================================================================
+-- 1. Auto-add campaign owner as DM when a campaign is created
+-- ============================================================================
+
+create or replace function public.handle_new_campaign()
+returns trigger
+language plpgsql
+security definer set search_path = ''
+as $$
+begin
+  insert into public.campaign_members (campaign_id, user_id, role)
+  values (new.id, new.owner_id, 'dm');
+  return new;
+end;
+$$;
+
+create trigger on_campaign_created
+  after insert on public.campaigns
+  for each row execute function public.handle_new_campaign();
+
+-- ============================================================================
+-- 2. Allow any authenticated user to join a campaign by ID
+-- ============================================================================
+
+create or replace function public.join_campaign(p_campaign_id uuid)
+returns void
+language plpgsql
+security definer set search_path = ''
+as $$
+begin
+  -- Check campaign exists
+  if not exists (select 1 from public.campaigns where id = p_campaign_id) then
+    raise exception 'Campaign not found';
+  end if;
+
+  -- Prevent duplicate membership
+  if exists (
+    select 1 from public.campaign_members
+    where campaign_id = p_campaign_id and user_id = auth.uid()
+  ) then
+    raise exception 'Already a member of this campaign';
+  end if;
+
+  -- Add user as a player
+  insert into public.campaign_members (campaign_id, user_id, role)
+  values (p_campaign_id, auth.uid(), 'player');
+end;
+$$;
+
 -- ============================================================================
 -- Done. Missions schema is ready.
 -- ============================================================================
