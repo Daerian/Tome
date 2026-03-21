@@ -2,6 +2,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 from pydantic_ai import Agent
 from pydantic_ai.messages import ModelRequest, ModelResponse, UserPromptPart, TextPart
+from pydantic_ai.models.anthropic import AnthropicModel
 from pydantic_ai.providers.anthropic import AnthropicProvider
 from dotenv import load_dotenv
 import os
@@ -14,11 +15,10 @@ router = APIRouter()  # FastAPI router — groups /generate under /api prefix in
 
 TESTING_MODE = os.getenv("TESTING_MODE", "false").lower() == "true"  # toggles console-only output
 
-# Explicitly pass the API key so the agent works whether the key comes from
-# .env (local) or an injected environment variable (Render).
+# Explicitly pass the API key via AnthropicProvider so it works whether the key
+# comes from .env (local) or an injected environment variable (Render).
 agent = Agent(
-    "anthropic:claude-haiku-4-5",
-    model_settings={"provider": AnthropicProvider(api_key=os.getenv("ANTHROPIC_API_KEY"))},
+    AnthropicModel("claude-haiku-4-5", provider=AnthropicProvider(api_key=os.getenv("ANTHROPIC_API_KEY"))),
     system_prompt="You are a helpful assistant.",
 )
 

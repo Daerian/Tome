@@ -26,6 +26,9 @@ __pycache__/
 backend/venv/
 .pytest_cache/
 
+# Claude Code
+.claude/
+
 # Editor directories and files
 .DS_Store
 .vscode
