@@ -7,10 +7,15 @@ export default function Chat() {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const bottomRef = useRef(null)
+  const inputRef = useRef(null)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, loading])
+
+  useEffect(() => {
+    if (!loading) inputRef.current?.focus()
+  }, [loading])
 
   async function sendMessage(e) {
     e.preventDefault()
@@ -36,6 +41,7 @@ export default function Chat() {
       setMessages([...updatedMessages, { role: 'assistant', content: 'Error: could not reach the server.' }])
     } finally {
       setLoading(false)
+      inputRef.current?.focus()
     }
   }
 
@@ -60,11 +66,13 @@ export default function Chat() {
 
       <form onSubmit={sendMessage} style={styles.form}>
         <input
+          ref={inputRef}
           style={styles.input}
           value={input}
           onChange={e => setInput(e.target.value)}
           placeholder="Type a message..."
           disabled={loading}
+          autoFocus
         />
         <button style={styles.button} type="submit" disabled={loading || !input.trim()}>
           Send
@@ -78,11 +86,12 @@ const styles = {
   container: {
     display: 'flex',
     flexDirection: 'column',
-    height: '100vh',
+    flex: 1,
     maxWidth: '720px',
     margin: '0 auto',
     padding: '1rem',
     boxSizing: 'border-box',
+    width: '100%',
   },
   messages: {
     flex: 1,
