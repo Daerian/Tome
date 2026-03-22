@@ -112,6 +112,7 @@ create table public.sessions (
   in_world_end_date   text,
   duration_minutes    integer,
   xp_awarded          integer,
+  prep_brief          text,
   created_at          timestamptz not null default now(),
   updated_at          timestamptz not null default now()
 );

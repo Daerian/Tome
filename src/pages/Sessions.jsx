@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import SessionDetail from './SessionDetail'
 
+const API_URL = import.meta.env.VITE_API_URL
+
 export default function Sessions({ campaignId, session, role }) {
   const [sessions, setSessions] = useState([])
   const [loading, setLoading] = useState(true)
@@ -10,6 +12,7 @@ export default function Sessions({ campaignId, session, role }) {
   // New-session form state (DM only)
   const [showCreate, setShowCreate] = useState(false)
   const [newTitle, setNewTitle] = useState('')
+  const [prepNotes, setPrepNotes] = useState('')
   const [creating, setCreating] = useState(false)
 
   useEffect(() => { fetchSessions() }, [campaignId])
@@ -33,21 +36,42 @@ export default function Sessions({ campaignId, session, role }) {
       ? Math.max(...sessions.map(s => s.session_number)) + 1
       : 1
 
+    const insertData = {
+      campaign_id: campaignId,
+      title: newTitle.trim(),
+      session_number: nextNumber,
+      status: 'planned',
+    }
+    if (prepNotes.trim()) {
+      insertData.dm_notes = prepNotes.trim()
+    }
+
     const { data, error } = await supabase
       .from('sessions')
-      .insert({
-        campaign_id: campaignId,
-        title: newTitle.trim(),
-        session_number: nextNumber,
-        status: 'planned',
-      })
+      .insert(insertData)
       .select()
       .single()
 
     if (!error && data) {
       setSessions([data, ...sessions])
+
+      // Fire-and-forget: auto-generate the session prep brief
+      fetch(`${API_URL}/api/session-prep`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_id: data.id,
+          campaign_id: campaignId,
+          dm_prep_notes: prepNotes.trim() || null,
+        }),
+      }).catch(() => {})
+
       setNewTitle('')
+      setPrepNotes('')
       setShowCreate(false)
+
+      // Navigate to the new session detail
+      setSelectedId(data.id)
     }
     setCreating(false)
   }
@@ -87,6 +111,13 @@ export default function Sessions({ campaignId, session, role }) {
             onChange={e => setNewTitle(e.target.value)}
             placeholder="Session title..."
             autoFocus
+          />
+          <textarea
+            style={styles.prepNotesInput}
+            value={prepNotes}
+            onChange={e => setPrepNotes(e.target.value)}
+            placeholder="Any plans for this session? e.g., moving to a new location, introducing an NPC..."
+            rows={3}
           />
           <button
             style={styles.button}
@@ -184,16 +215,26 @@ const styles = {
   },
   createForm: {
     display: 'flex',
+    flexDirection: 'column',
     gap: '0.5rem',
     marginBottom: '1rem',
   },
   input: {
-    flex: 1,
     padding: '0.6rem 0.75rem',
     borderRadius: '8px',
     border: '1px solid #cbd5e1',
     fontSize: '0.9rem',
     outline: 'none',
+  },
+  prepNotesInput: {
+    padding: '0.6rem 0.75rem',
+    borderRadius: '8px',
+    border: '1px solid #cbd5e1',
+    fontSize: '0.85rem',
+    outline: 'none',
+    resize: 'vertical',
+    fontFamily: 'inherit',
+    lineHeight: 1.5,
   },
   muted: {
     color: '#94a3b8',

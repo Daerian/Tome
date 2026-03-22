@@ -1,7 +1,7 @@
 import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import generate, recap
+from routers import generate, recap, session_prep
 from dotenv import load_dotenv
 
 # Load environment variables from backend/.env when running locally.
@@ -32,6 +32,7 @@ app.add_middleware(
 # e.g. generate.router's POST /generate becomes POST /api/generate
 app.include_router(generate.router, prefix="/api")
 app.include_router(recap.router, prefix="/api")
+app.include_router(session_prep.router, prefix="/api")
 
 
 @app.get("/health")

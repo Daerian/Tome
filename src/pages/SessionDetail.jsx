@@ -22,6 +22,10 @@ export default function SessionDetail({
   const [recapPreview, setRecapPreview] = useState('')
   const [generating, setGenerating] = useState(false)
 
+  // Session prep brief (DM only)
+  const [prepBrief, setPrepBrief] = useState('')
+  const [generatingPrep, setGeneratingPrep] = useState(false)
+
   // Add note form (all members)
   const [newNote, setNewNote] = useState('')
   const [addingNote, setAddingNote] = useState(false)
@@ -47,6 +51,7 @@ export default function SessionDetail({
     if (sessionRes.data) {
       setSessionData(sessionRes.data)
       setSummary(sessionRes.data.summary || '')
+      setPrepBrief(sessionRes.data.prep_brief || '')
     }
     if (notesRes.data) setNotes(notesRes.data)
     setLoading(false)
@@ -109,6 +114,25 @@ export default function SessionDetail({
       setSessionData(prev => ({ ...prev, summary: recapPreview }))
       setSummary(recapPreview)
       setRecapPreview('')
+    }
+  }
+
+  async function generatePrep() {
+    setGeneratingPrep(true)
+    setPrepBrief('')
+    try {
+      const res = await fetch(`${API_URL}/api/session-prep`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: sessionId, campaign_id: campaignId }),
+      })
+      const data = await res.json()
+      setPrepBrief(data.prep)
+      setSessionData(prev => ({ ...prev, prep_brief: data.prep }))
+    } catch {
+      setPrepBrief('Error: could not generate session prep.')
+    } finally {
+      setGeneratingPrep(false)
     }
   }
 
@@ -190,6 +214,49 @@ export default function SessionDetail({
           )}
         </div>
       </div>
+
+      {/* Session Prep Brief — DM only */}
+      {role === 'dm' && (
+        <section style={styles.section}>
+          <h3 style={styles.sectionTitle}>Session Prep Brief</h3>
+          {prepBrief ? (
+            <div style={styles.prepPreview}>
+              <div style={styles.prepContent}>{prepBrief}</div>
+              <div style={{ ...styles.editActions, marginTop: '0.75rem' }}>
+                <button
+                  style={styles.prepBtn}
+                  onClick={generatePrep}
+                  disabled={generatingPrep}
+                >
+                  {generatingPrep ? 'Regenerating...' : 'Regenerate'}
+                </button>
+                <button
+                  style={styles.buttonOutline}
+                  onClick={() => setPrepBrief('')}
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <p style={styles.muted}>
+                {generatingPrep
+                  ? 'Generating session prep brief...'
+                  : 'Generate an AI-powered brief to prepare for this session.'}
+              </p>
+              {!generatingPrep && (
+                <button
+                  style={{ ...styles.prepBtn, marginTop: '0.5rem' }}
+                  onClick={generatePrep}
+                >
+                  Generate Session Prep
+                </button>
+              )}
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Summary section */}
       <section style={styles.section}>
@@ -445,6 +512,27 @@ const styles = {
     border: 'none',
     fontSize: '0.8rem',
     cursor: 'pointer',
+  },
+  prepBtn: {
+    padding: '0.5rem 1rem',
+    borderRadius: '8px',
+    backgroundColor: '#059669',
+    color: '#fff',
+    border: 'none',
+    fontSize: '0.875rem',
+    cursor: 'pointer',
+  },
+  prepPreview: {
+    padding: '1rem',
+    borderRadius: '8px',
+    backgroundColor: '#ecfdf5',
+    border: '1px solid #a7f3d0',
+  },
+  prepContent: {
+    fontSize: '0.9rem',
+    color: '#334155',
+    lineHeight: 1.7,
+    whiteSpace: 'pre-wrap',
   },
   recapPreview: {
     marginTop: '1rem',
