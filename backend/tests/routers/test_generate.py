@@ -3,7 +3,7 @@ Tests for routers/generate.py.
 
 Covers:
 - build_history()  : unit tests, no network calls
-- POST /api/generate : integration tests using a mocked agent
+- POST /api/generate : integration tests using mocked agents
 """
 
 import pytest
@@ -23,27 +23,9 @@ class TestBuildHistory:
     """Unit tests for build_history — no network calls required."""
 
     def test_empty_list_returns_empty(self):
-        """
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        Asserts build_history([]) == []
-        """
         assert build_history([]) == []
 
     def test_user_message_becomes_model_request(self):
-        """
-        Parameters
-        ----------
-        Single user message.
-
-        Returns
-        -------
-        Asserts output is a ModelRequest with correct content.
-        """
         msgs = [Message(role="user", content="Hello")]
         result = build_history(msgs)
 
@@ -53,15 +35,6 @@ class TestBuildHistory:
         assert result[0].parts[0].content == "Hello"
 
     def test_assistant_message_becomes_model_response(self):
-        """
-        Parameters
-        ----------
-        Single assistant message.
-
-        Returns
-        -------
-        Asserts output is a ModelResponse with correct content.
-        """
         msgs = [Message(role="assistant", content="Hi there!")]
         result = build_history(msgs)
 
@@ -71,15 +44,6 @@ class TestBuildHistory:
         assert result[0].parts[0].content == "Hi there!"
 
     def test_alternating_conversation_preserves_order(self):
-        """
-        Parameters
-        ----------
-        Two-turn conversation (user, assistant, user).
-
-        Returns
-        -------
-        Asserts types and order are preserved.
-        """
         msgs = [
             Message(role="user", content="What is 2+2?"),
             Message(role="assistant", content="4"),
@@ -93,15 +57,6 @@ class TestBuildHistory:
         assert isinstance(result[2], ModelRequest)
 
     def test_content_is_preserved_exactly(self):
-        """
-        Parameters
-        ----------
-        Message with special characters.
-
-        Returns
-        -------
-        Asserts content is not modified.
-        """
         content = "Hello! How are you? 😊\nNew line."
         msgs = [Message(role="user", content=content)]
         result = build_history(msgs)
@@ -110,7 +65,7 @@ class TestBuildHistory:
 
 
 # ---------------------------------------------------------------------------
-# POST /api/generate integration tests (agent mocked)
+# POST /api/generate integration tests (agents mocked)
 # ---------------------------------------------------------------------------
 
 @pytest.fixture
@@ -122,20 +77,10 @@ def mock_agent_result():
 
 
 @pytest.mark.asyncio
-async def test_generate_returns_result(mock_agent_result):
-    """
-    POST /api/generate with a single user message returns a result string.
-
-    Parameters
-    ----------
-    mock_agent_result : MagicMock
-        Fixture providing a fake agent run result.
-
-    Returns
-    -------
-    Asserts response contains ``result`` key with expected string.
-    """
-    with patch("routers.generate.agent.run", new=AsyncMock(return_value=mock_agent_result)):
+async def test_generate_without_campaign(mock_agent_result):
+    """POST /api/generate without campaign_id uses the general agent."""
+    with patch("routers.generate.general_agent") as mock_general:
+        mock_general.run = AsyncMock(return_value=mock_agent_result)
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             response = await client.post("/api/generate", json={
                 "messages": [{"role": "user", "content": "Hello"}]
@@ -146,22 +91,32 @@ async def test_generate_returns_result(mock_agent_result):
 
 
 @pytest.mark.asyncio
-async def test_generate_passes_history_to_agent(mock_agent_result):
-    """
-    Agent receives the correct history excluding the last user message.
+async def test_generate_with_campaign(mock_agent_result):
+    """POST /api/generate with campaign_id uses the campaign agent."""
+    with patch("routers.generate.campaign_agent") as mock_campaign:
+        mock_campaign.run = AsyncMock(return_value=mock_agent_result)
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.post("/api/generate", json={
+                "messages": [{"role": "user", "content": "Who are the characters?"}],
+                "campaign_id": "test-campaign-id",
+                "user_id": "test-user-id",
+                "role": "dm",
+            })
 
-    Parameters
-    ----------
-    mock_agent_result : MagicMock
-        Fixture providing a fake agent run result.
+    assert response.status_code == 200
+    assert response.json()["result"] == "This is a mocked Claude response."
+    # Verify deps were passed
+    call_kwargs = mock_campaign.run.call_args.kwargs
+    assert call_kwargs["deps"].campaign_id == "test-campaign-id"
+    assert call_kwargs["deps"].user_id == "test-user-id"
+    assert call_kwargs["deps"].role == "dm"
 
-    Returns
-    -------
-    Asserts agent.run is called with history length == total messages - 1.
-    """
-    mock_run = AsyncMock(return_value=mock_agent_result)
 
-    with patch("routers.generate.agent.run", new=mock_run):
+@pytest.mark.asyncio
+async def test_generate_passes_history(mock_agent_result):
+    """Agent receives the correct history excluding the last user message."""
+    with patch("routers.generate.general_agent") as mock_general:
+        mock_general.run = AsyncMock(return_value=mock_agent_result)
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             await client.post("/api/generate", json={
                 "messages": [
@@ -171,27 +126,16 @@ async def test_generate_passes_history_to_agent(mock_agent_result):
                 ]
             })
 
-    # agent.run called with the last user prompt and 2 history messages
-    call_kwargs = mock_run.call_args
-    assert call_kwargs.args[0] == "Second message"
-    assert len(call_kwargs.kwargs["message_history"]) == 2
+    call_args = mock_general.run.call_args
+    assert call_args.args[0] == "Second message"
+    assert len(call_args.kwargs["message_history"]) == 2
 
 
 @pytest.mark.asyncio
 async def test_generate_testing_mode_flag(mock_agent_result):
-    """
-    When TESTING_MODE=true the response includes ``testing: True``.
-
-    Parameters
-    ----------
-    mock_agent_result : MagicMock
-        Fixture providing a fake agent run result.
-
-    Returns
-    -------
-    Asserts ``testing`` key is present and True in response.
-    """
-    with patch("routers.generate.agent.run", new=AsyncMock(return_value=mock_agent_result)):
+    """When TESTING_MODE=true the response includes testing: True."""
+    with patch("routers.generate.general_agent") as mock_general:
+        mock_general.run = AsyncMock(return_value=mock_agent_result)
         with patch("routers.generate.TESTING_MODE", True):
             async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
                 response = await client.post("/api/generate", json={
@@ -203,13 +147,7 @@ async def test_generate_testing_mode_flag(mock_agent_result):
 
 @pytest.mark.asyncio
 async def test_generate_invalid_body_returns_422():
-    """
-    A malformed request body returns HTTP 422 Unprocessable Entity.
-
-    Returns
-    -------
-    Asserts status code is 422 when messages field is missing.
-    """
+    """A malformed request body returns HTTP 422."""
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.post("/api/generate", json={"wrong_field": "data"})
 
@@ -217,14 +155,24 @@ async def test_generate_invalid_body_returns_422():
 
 
 @pytest.mark.asyncio
-async def test_health_endpoint():
-    """
-    GET /health returns status ok.
+async def test_generate_defaults_role_to_spectator(mock_agent_result):
+    """When role is omitted, defaults to 'spectator'."""
+    with patch("routers.generate.campaign_agent") as mock_campaign:
+        mock_campaign.run = AsyncMock(return_value=mock_agent_result)
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            await client.post("/api/generate", json={
+                "messages": [{"role": "user", "content": "Hello"}],
+                "campaign_id": "test-campaign-id",
+            })
 
-    Returns
-    -------
-    Asserts ``status`` is ``"ok"`` in response.
-    """
+    call_kwargs = mock_campaign.run.call_args.kwargs
+    assert call_kwargs["deps"].role == "spectator"
+    assert call_kwargs["deps"].user_id == ""
+
+
+@pytest.mark.asyncio
+async def test_health_endpoint():
+    """GET /health returns status ok."""
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.get("/health")
 

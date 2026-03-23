@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import Sessions from './Sessions'
 import Chat from './Chat'
+import Reference from './Reference'
 
 export default function CampaignView({ session }) {
   const { id } = useParams()
@@ -94,6 +95,12 @@ export default function CampaignView({ session }) {
         >
           Chat
         </button>
+        <button
+          style={tab === 'reference' ? styles.tabActive : styles.tab}
+          onClick={() => setTab('reference')}
+        >
+          D&D Ref
+        </button>
       </div>
 
       {/* Tab content */}
@@ -101,7 +108,8 @@ export default function CampaignView({ session }) {
         {tab === 'sessions' && (
           <Sessions campaignId={id} session={session} role={role} />
         )}
-        {tab === 'chat' && <Chat campaignId={id} />}
+        {tab === 'chat' && <Chat campaignId={id} session={session} role={role} />}
+        {tab === 'reference' && <Reference />}
       </div>
     </div>
   )

@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 
 const API_URL = import.meta.env.VITE_API_URL
 
-export default function Chat({ campaignId }) {
+export default function Chat({ campaignId, session, role }) {
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -32,7 +32,12 @@ export default function Chat({ campaignId }) {
       const res = await fetch(`${API_URL}/api/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: updatedMessages, campaign_id: campaignId }),
+        body: JSON.stringify({
+          messages: updatedMessages,
+          campaign_id: campaignId,
+          user_id: session?.user?.id || null,
+          role: role || null,
+        }),
       })
 
       const data = await res.json()
