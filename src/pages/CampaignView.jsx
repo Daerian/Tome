@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import Sessions from './Sessions'
 import Chat from './Chat'
+import Reference from './Reference'
 
 export default function CampaignView({ session }) {
   const { id } = useParams()
@@ -9,6 +11,7 @@ export default function CampaignView({ session }) {
   const [role, setRole] = useState(null)
   const [loading, setLoading] = useState(true)
   const [copied, setCopied] = useState(false)
+  const [tab, setTab] = useState('sessions')
 
   useEffect(() => {
     async function fetchCampaign() {
@@ -35,13 +38,19 @@ export default function CampaignView({ session }) {
   }
 
   if (loading) {
-    return <p style={{ textAlign: 'center', marginTop: '2rem', color: '#64748b' }}>Loading...</p>
+    return (
+      <p style={{ textAlign: 'center', marginTop: '2rem', color: '#64748b' }}>
+        Loading...
+      </p>
+    )
   }
 
   if (!campaign) {
     return (
       <div style={{ textAlign: 'center', marginTop: '3rem' }}>
-        <p style={{ color: '#334155' }}>Campaign not found or you don't have access.</p>
+        <p style={{ color: '#334155' }}>
+          Campaign not found or you don't have access.
+        </p>
         <Link to="/" style={{ color: '#2563eb' }}>Back to campaigns</Link>
       </div>
     )
@@ -49,22 +58,59 @@ export default function CampaignView({ session }) {
 
   return (
     <div style={styles.wrapper}>
+      {/* Campaign header */}
       <div style={styles.campaignHeader}>
         <div>
           <h2 style={styles.name}>{campaign.name}</h2>
-          {campaign.description && <p style={styles.desc}>{campaign.description}</p>}
+          {campaign.description && (
+            <p style={styles.desc}>{campaign.description}</p>
+          )}
         </div>
         <div style={styles.meta}>
           <span style={styles.badge}>{role.toUpperCase()}</span>
           <span style={styles.system}>{campaign.system}</span>
           {role === 'dm' && (
-            <button style={styles.copyBtn} onClick={copyId} title="Share this ID with players so they can join">
+            <button
+              style={styles.copyBtn}
+              onClick={copyId}
+              title="Share this ID with players so they can join"
+            >
               {copied ? 'Copied!' : 'Copy ID'}
             </button>
           )}
         </div>
       </div>
-      <Chat />
+
+      {/* Tab bar */}
+      <div style={styles.tabBar}>
+        <button
+          style={tab === 'sessions' ? styles.tabActive : styles.tab}
+          onClick={() => setTab('sessions')}
+        >
+          Sessions
+        </button>
+        <button
+          style={tab === 'chat' ? styles.tabActive : styles.tab}
+          onClick={() => setTab('chat')}
+        >
+          Chat
+        </button>
+        <button
+          style={tab === 'reference' ? styles.tabActive : styles.tab}
+          onClick={() => setTab('reference')}
+        >
+          D&D Ref
+        </button>
+      </div>
+
+      {/* Tab content */}
+      <div style={styles.content}>
+        {tab === 'sessions' && (
+          <Sessions campaignId={id} session={session} role={role} />
+        )}
+        {tab === 'chat' && <Chat campaignId={id} session={session} role={role} />}
+        {tab === 'reference' && <Reference />}
+      </div>
     </div>
   )
 }
@@ -120,5 +166,38 @@ const styles = {
     color: '#475569',
     fontSize: '0.75rem',
     cursor: 'pointer',
+  },
+  tabBar: {
+    display: 'flex',
+    gap: '0',
+    borderBottom: '1px solid #e2e8f0',
+    backgroundColor: '#fff',
+  },
+  tab: {
+    padding: '0.65rem 1.25rem',
+    background: 'none',
+    border: 'none',
+    borderBottom: '2px solid transparent',
+    fontSize: '0.875rem',
+    color: '#64748b',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+  },
+  tabActive: {
+    padding: '0.65rem 1.25rem',
+    background: 'none',
+    border: 'none',
+    borderBottom: '2px solid #2563eb',
+    fontSize: '0.875rem',
+    color: '#2563eb',
+    fontWeight: 600,
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+  },
+  content: {
+    flex: 1,
+    overflowY: 'auto',
+    display: 'flex',
+    flexDirection: 'column',
   },
 }

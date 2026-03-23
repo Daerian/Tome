@@ -16,3 +16,5 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 # All tests that hit the agent mock it out anyway.
 os.environ.setdefault("ANTHROPIC_API_KEY", "test-key-dummy")
 os.environ.setdefault("FRONTEND_URL_LOCAL", "http://localhost:5173")
+os.environ.setdefault("SUPABASE_URL", "http://localhost:54321")
+os.environ.setdefault("SUPABASE_SECRET_KEY", "test-secret-key-dummy")
