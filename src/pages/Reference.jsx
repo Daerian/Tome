@@ -3,7 +3,7 @@ import MessageContent from '../components/MessageContent'
 
 const API_URL = import.meta.env.VITE_API_URL
 
-export default function Reference() {
+export default function Reference({ system }) {
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -33,7 +33,7 @@ export default function Reference() {
       const res = await fetch(`${API_URL}/api/ref`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: updatedMessages }),
+        body: JSON.stringify({ messages: updatedMessages, system: system || null }),
       })
 
       const data = await res.json()

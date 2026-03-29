@@ -94,6 +94,14 @@ SPELL_FILE_MAP = {
 BESTIARY_SEARCH_ORDER = ["mm", "xmm", "mpmm", "vgm", "mtf", "ftd", "bam", "bgg"]
 SPELL_SEARCH_ORDER = ["phb", "xphb", "xge", "tce"]
 
+# Edition-specific search orders
+# 2024 sources use "X" prefix: XPHB, XMM, XDMG
+# 2014 sources are the originals: PHB, MM, plus supplements
+BESTIARY_2014_ORDER = ["mm", "mpmm", "vgm", "mtf", "ftd", "bam", "bgg"]
+BESTIARY_2024_ORDER = ["xmm"]
+SPELL_2014_ORDER = ["phb", "xge", "tce"]
+SPELL_2024_ORDER = ["xphb"]
+
 ADVENTURE_MAP = {
     "cos": ("Curse of Strahd", "adventure/adventure-cos.json"),
     "bgdia": ("Baldur's Gate: Descent into Avernus", "adventure/adventure-bgdia.json"),
@@ -451,17 +459,22 @@ def _format_spell(s: dict) -> str:
 # ---------------------------------------------------------------------------
 
 
-async def lookup_5etools_monster(name: str, source: str = "") -> str:
+async def lookup_5etools_monster(name: str, source: str = "", edition: str = "") -> str:
     """Look up a D&D 5e monster from the 5etools compendium. Covers ALL official
     sourcebooks including non-SRD content (Volo's, Mordenkainen's, adventure
     modules, etc.). Use 'source' to filter by book code (e.g. 'MM', 'VGM',
-    'XMM'). Returns a full stat block."""
+    'XMM'). Use 'edition' ('2014' or '2024') to restrict to that edition's
+    sourcebooks. Returns a full stat block."""
 
     name_lower = name.lower()
     source_lower = source.lower()
 
     if source_lower and source_lower in BESTIARY_FILE_MAP:
         files_to_search = [source_lower]
+    elif edition == "2024":
+        files_to_search = BESTIARY_2024_ORDER
+    elif edition == "2014":
+        files_to_search = BESTIARY_2014_ORDER
     else:
         files_to_search = BESTIARY_SEARCH_ORDER
 
@@ -485,16 +498,21 @@ async def lookup_5etools_monster(name: str, source: str = "") -> str:
     return "\n\n".join(_format_monster(m) for m in matches)
 
 
-async def lookup_5etools_spell(name: str, source: str = "") -> str:
+async def lookup_5etools_spell(name: str, source: str = "", edition: str = "") -> str:
     """Look up a D&D 5e spell from the 5etools compendium. Covers ALL official
     sourcebooks including non-SRD content (Xanathar's, Tasha's, etc.). Use
-    'source' to filter by book code (e.g. 'PHB', 'XGE', 'TCE')."""
+    'source' to filter by book code (e.g. 'PHB', 'XGE', 'TCE'). Use 'edition'
+    ('2014' or '2024') to restrict to that edition's sourcebooks."""
 
     name_lower = name.lower()
     source_lower = source.lower()
 
     if source_lower and source_lower in SPELL_FILE_MAP:
         files_to_search = [source_lower]
+    elif edition == "2024":
+        files_to_search = SPELL_2024_ORDER
+    elif edition == "2014":
+        files_to_search = SPELL_2014_ORDER
     else:
         files_to_search = SPELL_SEARCH_ORDER
 

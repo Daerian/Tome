@@ -1,17 +1,20 @@
 import { useState, useEffect } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import Sessions from './Sessions'
 import Chat from './Chat'
 import Reference from './Reference'
+import AdventureViewer from './AdventureViewer'
 
 export default function CampaignView({ session }) {
   const { id } = useParams()
+  const navigate = useNavigate()
   const [campaign, setCampaign] = useState(null)
   const [role, setRole] = useState(null)
   const [loading, setLoading] = useState(true)
   const [copied, setCopied] = useState(false)
-  const [tab, setTab] = useState('sessions')
+  const [leftTab, setLeftTab] = useState('sessions')
+  const [rightTab, setRightTab] = useState('chat')
 
   useEffect(() => {
     async function fetchCampaign() {
@@ -35,6 +38,16 @@ export default function CampaignView({ session }) {
     navigator.clipboard.writeText(campaign.id)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  async function deleteCampaign() {
+    if (!window.confirm(`Delete "${campaign.name}"? This will permanently remove all sessions, characters, and data. This cannot be undone.`)) return
+    const { error } = await supabase.from('campaigns').delete().eq('id', campaign.id)
+    if (error) {
+      alert('Failed to delete campaign.')
+    } else {
+      navigate('/')
+    }
   }
 
   if (loading) {
@@ -70,46 +83,80 @@ export default function CampaignView({ session }) {
           <span style={styles.badge}>{role.toUpperCase()}</span>
           <span style={styles.system}>{campaign.system}</span>
           {role === 'dm' && (
-            <button
-              style={styles.copyBtn}
-              onClick={copyId}
-              title="Share this ID with players so they can join"
-            >
-              {copied ? 'Copied!' : 'Copy ID'}
-            </button>
+            <>
+              <button
+                style={styles.copyBtn}
+                onClick={copyId}
+                title="Share this ID with players so they can join"
+              >
+                {copied ? 'Copied!' : 'Copy ID'}
+              </button>
+              <button
+                style={styles.deleteBtn}
+                onClick={deleteCampaign}
+                title="Delete this campaign"
+              >
+                Delete
+              </button>
+            </>
           )}
         </div>
       </div>
 
-      {/* Tab bar */}
-      <div style={styles.tabBar}>
-        <button
-          style={tab === 'sessions' ? styles.tabActive : styles.tab}
-          onClick={() => setTab('sessions')}
-        >
-          Sessions
-        </button>
-        <button
-          style={tab === 'chat' ? styles.tabActive : styles.tab}
-          onClick={() => setTab('chat')}
-        >
-          Chat
-        </button>
-        <button
-          style={tab === 'reference' ? styles.tabActive : styles.tab}
-          onClick={() => setTab('reference')}
-        >
-          D&D Ref
-        </button>
-      </div>
+      {/* Split panel layout */}
+      <div style={styles.splitContainer}>
+        {/* Left panel — Sessions / Adventure */}
+        <div style={styles.leftPanel}>
+          <div style={styles.panelTabBar}>
+            <button
+              style={leftTab === 'sessions' ? styles.panelTabActive : styles.panelTab}
+              onClick={() => setLeftTab('sessions')}
+            >
+              Sessions
+            </button>
+            {campaign.adventure_source && (
+              <button
+                style={leftTab === 'adventure' ? styles.panelTabActive : styles.panelTab}
+                onClick={() => setLeftTab('adventure')}
+              >
+                Adventure
+              </button>
+            )}
+          </div>
+          <div style={styles.panelContent}>
+            {leftTab === 'sessions' && (
+              <Sessions campaignId={id} session={session} role={role} />
+            )}
+            {leftTab === 'adventure' && campaign.adventure_source && (
+              <AdventureViewer code={campaign.adventure_source} />
+            )}
+          </div>
+        </div>
 
-      {/* Tab content */}
-      <div style={styles.content}>
-        {tab === 'sessions' && (
-          <Sessions campaignId={id} session={session} role={role} />
-        )}
-        {tab === 'chat' && <Chat campaignId={id} session={session} role={role} />}
-        {tab === 'reference' && <Reference />}
+        {/* Divider */}
+        <div style={styles.divider} />
+
+        {/* Right panel — Chat / D&D Ref */}
+        <div style={styles.rightPanel}>
+          <div style={styles.panelTabBar}>
+            <button
+              style={rightTab === 'chat' ? styles.panelTabActive : styles.panelTab}
+              onClick={() => setRightTab('chat')}
+            >
+              Chat
+            </button>
+            <button
+              style={rightTab === 'reference' ? styles.panelTabActive : styles.panelTab}
+              onClick={() => setRightTab('reference')}
+            >
+              D&D Ref
+            </button>
+          </div>
+          <div style={styles.panelContent}>
+            {rightTab === 'chat' && <Chat campaignId={id} session={session} role={role} />}
+            {rightTab === 'reference' && <Reference system={campaign.system} />}
+          </div>
+        </div>
       </div>
     </div>
   )
@@ -167,34 +214,66 @@ const styles = {
     fontSize: '0.75rem',
     cursor: 'pointer',
   },
-  tabBar: {
+  deleteBtn: {
+    padding: '0.3rem 0.6rem',
+    borderRadius: '6px',
+    backgroundColor: 'transparent',
+    border: '1px solid #fca5a5',
+    color: '#dc2626',
+    fontSize: '0.75rem',
+    cursor: 'pointer',
+  },
+  splitContainer: {
+    display: 'flex',
+    flex: 1,
+    overflow: 'hidden',
+  },
+  leftPanel: {
+    width: '50%',
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
+  },
+  rightPanel: {
+    width: '50%',
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
+  },
+  divider: {
+    width: '1px',
+    backgroundColor: '#e2e8f0',
+    flexShrink: 0,
+  },
+  panelTabBar: {
     display: 'flex',
     gap: '0',
     borderBottom: '1px solid #e2e8f0',
     backgroundColor: '#fff',
+    flexShrink: 0,
   },
-  tab: {
-    padding: '0.65rem 1.25rem',
+  panelTab: {
+    padding: '0.55rem 1rem',
     background: 'none',
     border: 'none',
     borderBottom: '2px solid transparent',
-    fontSize: '0.875rem',
+    fontSize: '0.8rem',
     color: '#64748b',
     cursor: 'pointer',
     fontFamily: 'inherit',
   },
-  tabActive: {
-    padding: '0.65rem 1.25rem',
+  panelTabActive: {
+    padding: '0.55rem 1rem',
     background: 'none',
     border: 'none',
     borderBottom: '2px solid #2563eb',
-    fontSize: '0.875rem',
+    fontSize: '0.8rem',
     color: '#2563eb',
     fontWeight: 600,
     cursor: 'pointer',
     fontFamily: 'inherit',
   },
-  content: {
+  panelContent: {
     flex: 1,
     overflowY: 'auto',
     display: 'flex',

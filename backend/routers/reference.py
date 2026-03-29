@@ -75,6 +75,7 @@ class Message(BaseModel):
 
 class RefRequest(BaseModel):
     messages: list[Message]
+    system: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -109,7 +110,26 @@ async def reference(body: RefRequest):
     history = build_history(body.messages[:-1])
     user_prompt = body.messages[-1].content
 
-    result = await ref_agent.run(user_prompt, message_history=history)
+    # Inject edition context so the LLM filters by the correct ruleset
+    edition_context = ""
+    if body.system == "5e-2024":
+        edition_context = (
+            "[EDITION CONTEXT: This campaign uses D&D 5th Edition 2024 rules. "
+            "When looking up monsters, spells, or other content, always pass "
+            "edition='2024' to 5etools tools. Prefer XPHB for spells and XMM "
+            "for monsters. Only fall back to 2014 sources if 2024 has no results.]\n\n"
+        )
+    elif body.system == "5e-2014":
+        edition_context = (
+            "[EDITION CONTEXT: This campaign uses D&D 5th Edition 2014 rules. "
+            "When looking up monsters, spells, or other content, always pass "
+            "edition='2014' to 5etools tools. Use PHB for spells and MM for "
+            "monsters. Do not use 2024 sources (XPHB, XMM).]\n\n"
+        )
+
+    result = await ref_agent.run(
+        edition_context + user_prompt, message_history=history
+    )
 
     if TESTING_MODE:
         print("\n--- REFERENCE MODE ---")
