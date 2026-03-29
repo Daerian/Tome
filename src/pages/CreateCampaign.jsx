@@ -76,9 +76,6 @@ export default function CreateCampaign({ session }) {
             onChange={e => setSystem(e.target.value)}
           >
             <option value="5e">D&D 5th Edition</option>
-            <option value="3.5e">D&D 3.5 Edition</option>
-            <option value="pf2e">Pathfinder 2e</option>
-            <option value="other">Other</option>
           </select>
         </label>
 
