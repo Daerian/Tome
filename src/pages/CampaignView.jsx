@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import Sessions from './Sessions'
+import NPCs from './NPCs'
+import Locations from './Locations'
 import Chat from './Chat'
 import Reference from './Reference'
 import AdventureViewer from './AdventureViewer'
@@ -114,6 +116,18 @@ export default function CampaignView({ session }) {
             >
               Sessions
             </button>
+            <button
+              style={leftTab === 'npcs' ? styles.panelTabActive : styles.panelTab}
+              onClick={() => setLeftTab('npcs')}
+            >
+              NPCs
+            </button>
+            <button
+              style={leftTab === 'locations' ? styles.panelTabActive : styles.panelTab}
+              onClick={() => setLeftTab('locations')}
+            >
+              Locations
+            </button>
             {campaign.adventure_source && (
               <button
                 style={leftTab === 'adventure' ? styles.panelTabActive : styles.panelTab}
@@ -126,6 +140,12 @@ export default function CampaignView({ session }) {
           <div style={styles.panelContent}>
             {leftTab === 'sessions' && (
               <Sessions campaignId={id} session={session} role={role} />
+            )}
+            {leftTab === 'npcs' && (
+              <NPCs campaignId={id} session={session} role={role} />
+            )}
+            {leftTab === 'locations' && (
+              <Locations campaignId={id} session={session} role={role} />
             )}
             {leftTab === 'adventure' && campaign.adventure_source && (
               <AdventureViewer code={campaign.adventure_source} />

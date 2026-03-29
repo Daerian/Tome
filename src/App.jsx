@@ -9,6 +9,7 @@ import CreateCampaign from './pages/CreateCampaign'
 import JoinCampaign from './pages/JoinCampaign'
 import CampaignView from './pages/CampaignView'
 import Account from './pages/Account'
+import { SpeedInsights } from '@vercel/speed-insights/react'
 
 export default function App() {
   const { session, loading, signInWithGoogle, signOut } = useAuth()
@@ -40,6 +41,7 @@ export default function App() {
           <Route path="/account" element={<Account session={session} profile={profile} updateProfile={updateProfile} />} />
         </Routes>
       </Layout>
+      <SpeedInsights />
     </BrowserRouter>
   )
 }
