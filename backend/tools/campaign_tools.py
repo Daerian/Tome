@@ -125,16 +125,18 @@ def search_characters(
     ctx: RunContext[CampaignDeps],
     name: str = "",
     character_type: str = "",
+    tag: str = "",
 ) -> str:
     """Search for characters in this campaign. You can filter by name
-    (partial match) and/or type (pc, npc, companion, deity). Returns
-    name, race, class, level, description, and status."""
+    (partial match), type (pc, npc, companion, deity), and/or tag.
+    Returns name, race, class, level, description, tags, relationships,
+    and status."""
 
     query = (
         ctx.deps.supabase.table("characters")
         .select(
             "name, type, race, class, level, alignment, status, "
-            "description, backstory"
+            "description, backstory, tags, relationships, portrait_url"
         )
         .eq("campaign_id", ctx.deps.campaign_id)
     )
@@ -142,6 +144,8 @@ def search_characters(
         query = query.ilike("name", f"%{name}%")
     if character_type:
         query = query.eq("type", character_type)
+    if tag:
+        query = query.contains("tags", [tag])
 
     result = query.limit(15).execute()
     characters = result.data or []
@@ -151,6 +155,8 @@ def search_characters(
             filter_desc += f" matching '{name}'"
         if character_type:
             filter_desc += f" of type '{character_type}'"
+        if tag:
+            filter_desc += f" tagged '{tag}'"
         return f"No characters found{filter_desc}."
 
     lines = []
@@ -161,6 +167,11 @@ def search_characters(
             f"{ch.get('class', '?')}, Level {ch.get('level', '?')}): "
             f"{desc} [Status: {ch.get('status', '?')}]"
         )
+        if ch.get("tags"):
+            lines.append(f"  Tags: {', '.join(ch['tags'])}")
+        if ch.get("relationships"):
+            rels = [f"{r['name']} ({r['relation']})" for r in ch["relationships"]]
+            lines.append(f"  Relationships: {', '.join(rels)}")
         if ch.get("backstory"):
             backstory = ch["backstory"]
             if len(backstory) > 200:
@@ -205,23 +216,34 @@ def search_notes(
 
 
 def get_locations(
-    ctx: RunContext[CampaignDeps], name: str = ""
+    ctx: RunContext[CampaignDeps], name: str = "", tag: str = ""
 ) -> str:
     """Get locations in this campaign. Optionally filter by name (partial
-    match). Returns name, type, description, and parent location."""
+    match) and/or tag. Returns name, type, description, tags,
+    relationships, and parent location."""
 
     query = (
         ctx.deps.supabase.table("locations")
-        .select("id, name, type, description, parent_location_id")
+        .select(
+            "id, name, type, description, parent_location_id, "
+            "tags, relationships, image_url"
+        )
         .eq("campaign_id", ctx.deps.campaign_id)
     )
     if name:
         query = query.ilike("name", f"%{name}%")
+    if tag:
+        query = query.contains("tags", [tag])
 
     result = query.limit(20).execute()
     locations = result.data or []
     if not locations:
-        return f"No locations found{' matching ' + repr(name) if name else ''}."
+        filter_desc = ""
+        if name:
+            filter_desc += f" matching '{name}'"
+        if tag:
+            filter_desc += f" tagged '{tag}'"
+        return f"No locations found{filter_desc}."
 
     # Build parent lookup for hierarchy
     all_locs_res = (
@@ -242,6 +264,11 @@ def get_locations(
         if len(desc) > 200:
             desc = desc[:200] + "..."
         lines.append(f"- {loc['name']} ({loc['type']}){parent}: {desc}")
+        if loc.get("tags"):
+            lines.append(f"  Tags: {', '.join(loc['tags'])}")
+        if loc.get("relationships"):
+            rels = [f"{r['name']} ({r['relation']})" for r in loc["relationships"]]
+            lines.append(f"  Relationships: {', '.join(rels)}")
     return "\n".join(lines)
 
 
@@ -530,6 +557,188 @@ def add_timeline_event(
     return "Failed to record timeline event."
 
 
+def create_character(
+    ctx: RunContext[CampaignDeps],
+    name: str,
+    character_type: str = "npc",
+    race: str = "",
+    char_class: str = "",
+    description: str = "",
+    backstory: str = "",
+    tags: list[str] | None = None,
+    relationships: list[dict] | None = None,
+) -> str:
+    """Create a new character (NPC, companion, or deity) in this campaign.
+    Only the DM can create characters via this tool. Tags should be short
+    descriptive labels. Relationships are [{name, relation}] objects."""
+
+    if ctx.deps.role != "dm":
+        return "Only the DM can create characters."
+
+    data = {
+        "campaign_id": ctx.deps.campaign_id,
+        "name": name,
+        "type": character_type,
+        "visibility": "public",
+    }
+    if race:
+        data["race"] = race
+    if char_class:
+        data["class"] = char_class
+    if description:
+        data["description"] = description
+    if backstory:
+        data["backstory"] = backstory
+    if tags:
+        data["tags"] = tags
+    if relationships:
+        data["relationships"] = relationships
+
+    result = ctx.deps.supabase.table("characters").insert(data).execute()
+    if result.data:
+        return f"Created {character_type} '{name}' successfully."
+    return f"Failed to create character '{name}'."
+
+
+def update_character(
+    ctx: RunContext[CampaignDeps],
+    character_name: str,
+    description: str = "",
+    backstory: str = "",
+    tags: list[str] | None = None,
+    relationships: list[dict] | None = None,
+) -> str:
+    """Update an existing character's description, backstory, tags, or
+    relationships. Only the DM can update characters via this tool."""
+
+    if ctx.deps.role != "dm":
+        return "Only the DM can update characters."
+
+    char_res = (
+        ctx.deps.supabase.table("characters")
+        .select("id, name")
+        .eq("campaign_id", ctx.deps.campaign_id)
+        .ilike("name", f"%{character_name}%")
+        .limit(1)
+        .execute()
+    )
+    characters = char_res.data or []
+    if not characters:
+        return f"No character found matching '{character_name}'."
+
+    ch = characters[0]
+    updates = {}
+    if description:
+        updates["description"] = description
+    if backstory:
+        updates["backstory"] = backstory
+    if tags is not None:
+        updates["tags"] = tags
+    if relationships is not None:
+        updates["relationships"] = relationships
+
+    if not updates:
+        return "No updates provided."
+
+    ctx.deps.supabase.table("characters").update(updates).eq("id", ch["id"]).execute()
+    return f"Updated character '{ch['name']}' successfully."
+
+
+def create_location(
+    ctx: RunContext[CampaignDeps],
+    name: str,
+    location_type: str = "city",
+    description: str = "",
+    notes: str = "",
+    tags: list[str] | None = None,
+    relationships: list[dict] | None = None,
+    parent_location_name: str = "",
+) -> str:
+    """Create a new location in this campaign. Only the DM can create
+    locations. location_type must be one of: continent, region, city,
+    town, village, dungeon, building, room, wilderness, plane."""
+
+    if ctx.deps.role != "dm":
+        return "Only the DM can create locations."
+
+    data = {
+        "campaign_id": ctx.deps.campaign_id,
+        "name": name,
+        "type": location_type,
+        "visibility": "public",
+    }
+    if description:
+        data["description"] = description
+    if notes:
+        data["notes"] = notes
+    if tags:
+        data["tags"] = tags
+    if relationships:
+        data["relationships"] = relationships
+
+    # Resolve parent location by name
+    if parent_location_name:
+        parent_res = (
+            ctx.deps.supabase.table("locations")
+            .select("id")
+            .eq("campaign_id", ctx.deps.campaign_id)
+            .ilike("name", f"%{parent_location_name}%")
+            .limit(1)
+            .execute()
+        )
+        if parent_res.data:
+            data["parent_location_id"] = parent_res.data[0]["id"]
+
+    result = ctx.deps.supabase.table("locations").insert(data).execute()
+    if result.data:
+        return f"Created {location_type} '{name}' successfully."
+    return f"Failed to create location '{name}'."
+
+
+def update_location(
+    ctx: RunContext[CampaignDeps],
+    location_name: str,
+    description: str = "",
+    notes: str = "",
+    tags: list[str] | None = None,
+    relationships: list[dict] | None = None,
+) -> str:
+    """Update an existing location's description, notes, tags, or
+    relationships. Only the DM can update locations."""
+
+    if ctx.deps.role != "dm":
+        return "Only the DM can update locations."
+
+    loc_res = (
+        ctx.deps.supabase.table("locations")
+        .select("id, name")
+        .eq("campaign_id", ctx.deps.campaign_id)
+        .ilike("name", f"%{location_name}%")
+        .limit(1)
+        .execute()
+    )
+    locations = loc_res.data or []
+    if not locations:
+        return f"No location found matching '{location_name}'."
+
+    loc = locations[0]
+    updates = {}
+    if description:
+        updates["description"] = description
+    if notes:
+        updates["notes"] = notes
+    if tags is not None:
+        updates["tags"] = tags
+    if relationships is not None:
+        updates["relationships"] = relationships
+
+    if not updates:
+        return "No updates provided."
+
+    ctx.deps.supabase.table("locations").update(updates).eq("id", loc["id"]).execute()
+    return f"Updated location '{loc['name']}' successfully."
+
+
 def update_mission_status(
     ctx: RunContext[CampaignDeps],
     mission_title: str,
@@ -582,6 +791,10 @@ READ_TOOLS = [
 WRITE_TOOLS = [
     add_note,
     update_character_status,
+    create_character,
+    update_character,
+    create_location,
+    update_location,
     add_timeline_event,
     update_mission_status,
 ]
