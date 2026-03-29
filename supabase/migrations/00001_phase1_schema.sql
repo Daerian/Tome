@@ -72,6 +72,7 @@ create table public.campaigns (
   name        text        not null,
   description text,
   system      text        not null default '5e',   -- e.g. '5e', '3.5e', 'pf2e'
+  adventure_source text,                          -- e.g. 'cos', 'lmop'; NULL for homebrew
   image_url   text,
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now()

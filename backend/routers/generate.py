@@ -21,6 +21,7 @@ from dotenv import load_dotenv
 from supabase_client import supabase as sb
 from tools.deps import CampaignDeps
 from tools.campaign_tools import ALL_CAMPAIGN_TOOLS
+from tools.fivetools_tools import ADVENTURE_MAP
 import os
 
 # Load .env before reading any env vars so the API key is available locally.
@@ -132,7 +133,7 @@ def get_campaign_overview(supabase, campaign_id: str) -> str:
 
     campaign_res = (
         supabase.table("campaigns")
-        .select("name, description, system")
+        .select("name, description, system, adventure_source")
         .eq("id", campaign_id)
         .single()
         .execute()
@@ -182,6 +183,19 @@ def get_campaign_overview(supabase, campaign_id: str) -> str:
     lines.append(f"- {len(missions)} active missions")
     lines.append(f"- {len(beats)} active story beats")
     lines.append(f"- {len(factions)} active factions")
+
+    # Adventure module context
+    adv_code = c.get("adventure_source")
+    if adv_code and adv_code.lower() in ADVENTURE_MAP:
+        adv_name = ADVENTURE_MAP[adv_code.lower()][0]
+        lines.append("")
+        lines.append(f"Adventure Module: {adv_name} ({adv_code.upper()})")
+        lines.append(
+            "This campaign is based on a published adventure. Use the "
+            "browse_5etools_adventure tool with adventure='"
+            f"{adv_code.lower()}' to look up chapter content when the user "
+            "asks about adventure details, encounters, locations, or plot."
+        )
 
     return "\n".join(lines)
 

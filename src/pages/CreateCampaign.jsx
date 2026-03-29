@@ -7,6 +7,7 @@ export default function CreateCampaign({ session }) {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [system, setSystem] = useState('5e')
+  const [adventureSource, setAdventureSource] = useState('')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
@@ -26,6 +27,7 @@ export default function CreateCampaign({ session }) {
         name: name.trim(),
         description: description.trim() || null,
         system,
+        adventure_source: adventureSource || null,
         owner_id: session.user.id,
       })
       .select()
@@ -79,6 +81,37 @@ export default function CreateCampaign({ session }) {
             <option value="other">Other</option>
           </select>
         </label>
+
+        {system === '5e' && (
+          <label style={styles.label}>
+            Adventure Module (optional)
+            <select
+              style={styles.input}
+              value={adventureSource}
+              onChange={e => setAdventureSource(e.target.value)}
+            >
+              <option value="">Homebrew / Custom</option>
+              <option value="cos">Curse of Strahd</option>
+              <option value="bgdia">Baldur's Gate: Descent into Avernus</option>
+              <option value="skt">Storm King's Thunder</option>
+              <option value="toa">Tomb of Annihilation</option>
+              <option value="oota">Out of the Abyss</option>
+              <option value="hotdq">Hoard of the Dragon Queen</option>
+              <option value="rot">Rise of Tiamat</option>
+              <option value="pota">Princes of the Apocalypse</option>
+              <option value="lmop">Lost Mine of Phandelver</option>
+              <option value="wdh">Waterdeep: Dragon Heist</option>
+              <option value="wdmm">Waterdeep: Dungeon of the Mad Mage</option>
+              <option value="gos">Ghosts of Saltmarsh</option>
+              <option value="idrotf">Icewind Dale: Rime of the Frostmaiden</option>
+              <option value="cm">Candlekeep Mysteries</option>
+              <option value="wbtw">The Wild Beyond the Witchlight</option>
+              <option value="dsotdq">Dragonlance: Shadow of the Dragon Queen</option>
+              <option value="pabtso">Phandelver and Below: The Shattered Obelisk</option>
+              <option value="dip">Dragon of Icespire Peak</option>
+            </select>
+          </label>
+        )}
 
         {error && <p style={styles.error}>{error}</p>}
 

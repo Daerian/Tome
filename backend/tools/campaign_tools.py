@@ -9,6 +9,7 @@ them in a thread pool automatically.
 
 from pydantic_ai import RunContext
 from tools.deps import CampaignDeps
+from tools.fivetools_tools import browse_5etools_adventure
 
 
 # ---------------------------------------------------------------------------
@@ -585,4 +586,4 @@ WRITE_TOOLS = [
     update_mission_status,
 ]
 
-ALL_CAMPAIGN_TOOLS = READ_TOOLS + WRITE_TOOLS
+ALL_CAMPAIGN_TOOLS = READ_TOOLS + WRITE_TOOLS + [browse_5etools_adventure]
