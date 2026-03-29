@@ -21,6 +21,7 @@ from dotenv import load_dotenv
 from supabase_client import supabase as sb
 from tools.deps import CampaignDeps
 from tools.campaign_tools import ALL_CAMPAIGN_TOOLS
+from tools.fivetools_tools import ADVENTURE_MAP
 import os
 
 # Load .env before reading any env vars so the API key is available locally.
@@ -132,7 +133,7 @@ def get_campaign_overview(supabase, campaign_id: str) -> str:
 
     campaign_res = (
         supabase.table("campaigns")
-        .select("name, description, system")
+        .select("name, description, system, adventure_source")
         .eq("id", campaign_id)
         .single()
         .execute()
@@ -173,7 +174,19 @@ def get_campaign_overview(supabase, campaign_id: str) -> str:
     ]
     if c.get("description"):
         lines.append(f"Description: {c['description']}")
-    lines.append(f"System: {c['system']}")
+    system = c.get("system", "5e-2014")
+    lines.append(f"System: {system}")
+    if system == "5e-2024":
+        lines.append(
+            "Edition: 2024 rules. When using 5etools lookup tools, always pass "
+            "edition='2024'. Prefer XPHB for spells and XMM for monsters."
+        )
+    elif system == "5e-2014":
+        lines.append(
+            "Edition: 2014 rules. When using 5etools lookup tools, always pass "
+            "edition='2014'. Use PHB for spells and MM for monsters. "
+            "Do not use 2024 sources (XPHB, XMM)."
+        )
     lines.append("")
     lines.append("Available campaign data (use your tools to look up details):")
     lines.append(f"- {len(sessions)} sessions")
@@ -182,6 +195,19 @@ def get_campaign_overview(supabase, campaign_id: str) -> str:
     lines.append(f"- {len(missions)} active missions")
     lines.append(f"- {len(beats)} active story beats")
     lines.append(f"- {len(factions)} active factions")
+
+    # Adventure module context
+    adv_code = c.get("adventure_source")
+    if adv_code and adv_code.lower() in ADVENTURE_MAP:
+        adv_name = ADVENTURE_MAP[adv_code.lower()][0]
+        lines.append("")
+        lines.append(f"Adventure Module: {adv_name} ({adv_code.upper()})")
+        lines.append(
+            "This campaign is based on a published adventure. Use the "
+            "browse_5etools_adventure tool with adventure='"
+            f"{adv_code.lower()}' to look up chapter content when the user "
+            "asks about adventure details, encounters, locations, or plot."
+        )
 
     return "\n".join(lines)
 
