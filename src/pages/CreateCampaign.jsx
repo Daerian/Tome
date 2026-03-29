@@ -6,7 +6,7 @@ export default function CreateCampaign({ session }) {
   const navigate = useNavigate()
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
-  const [system, setSystem] = useState('5e')
+  const [system, setSystem] = useState('5e-2014')
   const [adventureSource, setAdventureSource] = useState('')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
@@ -75,11 +75,12 @@ export default function CreateCampaign({ session }) {
             value={system}
             onChange={e => setSystem(e.target.value)}
           >
-            <option value="5e">D&D 5th Edition</option>
+            <option value="5e-2014">D&D 5th Edition (2014)</option>
+            <option value="5e-2024">D&D 5th Edition (2024)</option>
           </select>
         </label>
 
-        {system === '5e' && (
+        {(system === '5e-2014' || system === '5e-2024') && (
           <label style={styles.label}>
             Adventure Module (optional)
             <select

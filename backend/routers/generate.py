@@ -174,7 +174,19 @@ def get_campaign_overview(supabase, campaign_id: str) -> str:
     ]
     if c.get("description"):
         lines.append(f"Description: {c['description']}")
-    lines.append(f"System: {c['system']}")
+    system = c.get("system", "5e-2014")
+    lines.append(f"System: {system}")
+    if system == "5e-2024":
+        lines.append(
+            "Edition: 2024 rules. When using 5etools lookup tools, always pass "
+            "edition='2024'. Prefer XPHB for spells and XMM for monsters."
+        )
+    elif system == "5e-2014":
+        lines.append(
+            "Edition: 2014 rules. When using 5etools lookup tools, always pass "
+            "edition='2014'. Use PHB for spells and MM for monsters. "
+            "Do not use 2024 sources (XPHB, XMM)."
+        )
     lines.append("")
     lines.append("Available campaign data (use your tools to look up details):")
     lines.append(f"- {len(sessions)} sessions")

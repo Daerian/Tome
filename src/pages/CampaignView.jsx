@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import Sessions from './Sessions'
 import Chat from './Chat'
@@ -8,6 +8,7 @@ import AdventureViewer from './AdventureViewer'
 
 export default function CampaignView({ session }) {
   const { id } = useParams()
+  const navigate = useNavigate()
   const [campaign, setCampaign] = useState(null)
   const [role, setRole] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -37,6 +38,16 @@ export default function CampaignView({ session }) {
     navigator.clipboard.writeText(campaign.id)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  async function deleteCampaign() {
+    if (!window.confirm(`Delete "${campaign.name}"? This will permanently remove all sessions, characters, and data. This cannot be undone.`)) return
+    const { error } = await supabase.from('campaigns').delete().eq('id', campaign.id)
+    if (error) {
+      alert('Failed to delete campaign.')
+    } else {
+      navigate('/')
+    }
   }
 
   if (loading) {
@@ -72,13 +83,22 @@ export default function CampaignView({ session }) {
           <span style={styles.badge}>{role.toUpperCase()}</span>
           <span style={styles.system}>{campaign.system}</span>
           {role === 'dm' && (
-            <button
-              style={styles.copyBtn}
-              onClick={copyId}
-              title="Share this ID with players so they can join"
-            >
-              {copied ? 'Copied!' : 'Copy ID'}
-            </button>
+            <>
+              <button
+                style={styles.copyBtn}
+                onClick={copyId}
+                title="Share this ID with players so they can join"
+              >
+                {copied ? 'Copied!' : 'Copy ID'}
+              </button>
+              <button
+                style={styles.deleteBtn}
+                onClick={deleteCampaign}
+                title="Delete this campaign"
+              >
+                Delete
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -134,7 +154,7 @@ export default function CampaignView({ session }) {
           </div>
           <div style={styles.panelContent}>
             {rightTab === 'chat' && <Chat campaignId={id} session={session} role={role} />}
-            {rightTab === 'reference' && <Reference />}
+            {rightTab === 'reference' && <Reference system={campaign.system} />}
           </div>
         </div>
       </div>
@@ -191,6 +211,15 @@ const styles = {
     backgroundColor: 'transparent',
     border: '1px solid #cbd5e1',
     color: '#475569',
+    fontSize: '0.75rem',
+    cursor: 'pointer',
+  },
+  deleteBtn: {
+    padding: '0.3rem 0.6rem',
+    borderRadius: '6px',
+    backgroundColor: 'transparent',
+    border: '1px solid #fca5a5',
+    color: '#dc2626',
     fontSize: '0.75rem',
     cursor: 'pointer',
   },
