@@ -25,6 +25,15 @@ export default function SessionDetail({
   const [notes, setNotes] = useState([])
   const [loading, setLoading] = useState(true)
 
+  // Collapsible sections state
+  const [expandedSections, setExpandedSections] = useState({
+    prep: true,
+    items: true,
+    summary: true,
+    loot: true,
+    notes: true,
+  })
+
   // Summary editing (DM only)
   const [editingSummary, setEditingSummary] = useState(false)
   const [summary, setSummary] = useState('')
@@ -54,6 +63,10 @@ export default function SessionDetail({
   const [addingNote, setAddingNote] = useState(false)
 
   useEffect(() => { fetchData() }, [sessionId])
+
+  function toggleSection(key) {
+    setExpandedSections(prev => ({ ...prev, [key]: !prev[key] }))
+  }
 
   async function fetchData() {
     const [sessionRes, notesRes, lootRes] = await Promise.all([
@@ -315,9 +328,19 @@ export default function SessionDetail({
       {/* Session Prep Brief — DM only */}
       {role === 'dm' && (
         <section style={styles.section}>
-          <h3 style={styles.sectionTitle}>Session Prep Brief</h3>
-          {prepBrief ? (
-            <div style={styles.prepPreview}>
+          <button
+            style={styles.sectionHeaderBtn}
+            onClick={() => toggleSection('prep')}
+          >
+            <span style={styles.chevron}>
+              {expandedSections.prep ? '▼' : '▶'}
+            </span>
+            Session Prep Brief
+          </button>
+          {expandedSections.prep && (
+            <>
+              {prepBrief ? (
+                <div style={styles.prepPreview}>
               <div style={styles.prepContent}>{prepBrief}</div>
               <div style={{ ...styles.editActions, marginTop: '0.75rem' }}>
                 <button
@@ -352,17 +375,27 @@ export default function SessionDetail({
               )}
             </div>
           )}
+            </>
+          )}
         </section>
       )}
 
       {/* Prep Items — DM only */}
       {role === 'dm' && (
         <section style={styles.section}>
-          <h3 style={styles.sectionTitle}>
+          <button
+            style={styles.sectionHeaderBtn}
+            onClick={() => toggleSection('items')}
+          >
+            <span style={styles.chevron}>
+              {expandedSections.items ? '▼' : '▶'}
+            </span>
             Prep Items ({prepItems.length})
-          </h3>
+          </button>
 
-          {prepItems.length > 0 && (
+          {expandedSections.items && (
+            <>
+              {prepItems.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '0.75rem' }}>
               {prepItems.map((item, i) => (
                 <div key={i} style={styles.prepItemCard}>
@@ -442,13 +475,25 @@ export default function SessionDetail({
               + Add Prep Item
             </button>
           )}
+            </>
+          )}
         </section>
       )}
 
       {/* Summary section */}
       <section style={styles.section}>
-        <h3 style={styles.sectionTitle}>Summary</h3>
-        {editingSummary ? (
+        <button
+          style={styles.sectionHeaderBtn}
+          onClick={() => toggleSection('summary')}
+        >
+          <span style={styles.chevron}>
+            {expandedSections.summary ? '▼' : '▶'}
+          </span>
+          Summary
+        </button>
+        {expandedSections.summary && (
+          <>
+            {editingSummary ? (
           <div style={styles.editArea}>
             <textarea
               style={styles.textarea}
@@ -519,19 +564,27 @@ export default function SessionDetail({
             )}
           </div>
         )}
+          </>
+        )}
       </section>
 
       {/* Loot section */}
       <section style={styles.section}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', paddingBottom: '0.4rem', borderBottom: '1px solid #e2e8f0' }}>
-          <h3 style={{ fontSize: '1rem', color: '#334155', margin: 0 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+          <button
+            style={styles.sectionHeaderBtn}
+            onClick={() => toggleSection('loot')}
+          >
+            <span style={styles.chevron}>
+              {expandedSections.loot ? '▼' : '▶'}
+            </span>
             Loot ({loot.length})
             {loot.length > 0 && (
               <span style={{ fontWeight: 400, fontSize: '0.8rem', color: '#b45309', marginLeft: '0.5rem' }}>
                 {loot.reduce((sum, l) => sum + (l.value_gp ? l.value_gp * l.quantity : 0), 0).toLocaleString()} GP
               </span>
             )}
-          </h3>
+          </button>
           <button
             style={styles.buttonSmall}
             onClick={() => setShowAddLoot(!showAddLoot)}
@@ -539,6 +592,9 @@ export default function SessionDetail({
             {showAddLoot ? 'Cancel' : '+ Log Loot'}
           </button>
         </div>
+
+        {expandedSections.loot && (
+          <>
 
         {showAddLoot && (
           <div style={styles.lootForm}>
@@ -632,49 +688,63 @@ export default function SessionDetail({
             ))}
           </div>
         )}
+          </>
+        )}
       </section>
 
       {/* Notes section */}
       <section style={styles.section}>
-        <h3 style={styles.sectionTitle}>Notes ({notes.length})</h3>
+        <button
+          style={styles.sectionHeaderBtn}
+          onClick={() => toggleSection('notes')}
+        >
+          <span style={styles.chevron}>
+            {expandedSections.notes ? '▼' : '▶'}
+          </span>
+          Notes ({notes.length})
+        </button>
 
-        {notes.length === 0 && (
-          <p style={styles.muted}>
-            No notes yet. Be the first to add one!
-          </p>
-        )}
+        {expandedSections.notes && (
+          <>
+            {notes.length === 0 && (
+              <p style={styles.muted}>
+                No notes yet. Be the first to add one!
+              </p>
+            )}
 
-        {notes.map(n => (
-          <div key={n.id} style={styles.noteCard}>
-            <div style={styles.noteMeta}>
-              <span style={styles.noteAuthor}>
-                {n.profiles?.display_name || 'Unknown'}
-              </span>
-              <span style={styles.noteDate}>
-                {new Date(n.created_at).toLocaleDateString()}
-              </span>
+            {notes.map(n => (
+              <div key={n.id} style={styles.noteCard}>
+                <div style={styles.noteMeta}>
+                  <span style={styles.noteAuthor}>
+                    {n.profiles?.display_name || 'Unknown'}
+                  </span>
+                  <span style={styles.noteDate}>
+                    {new Date(n.created_at).toLocaleDateString()}
+                  </span>
+                </div>
+                <p style={styles.noteContent}>{n.content}</p>
+              </div>
+            ))}
+
+            {/* Add-note form */}
+            <div style={styles.addNoteForm}>
+              <textarea
+                style={styles.noteInput}
+                value={newNote}
+                onChange={e => setNewNote(e.target.value)}
+                placeholder="Add your notes about this session..."
+                rows={3}
+              />
+              <button
+                style={styles.button}
+                onClick={addNote}
+                disabled={addingNote || !newNote.trim()}
+              >
+                {addingNote ? 'Adding...' : 'Add Note'}
+              </button>
             </div>
-            <p style={styles.noteContent}>{n.content}</p>
-          </div>
-        ))}
-
-        {/* Add-note form */}
-        <div style={styles.addNoteForm}>
-          <textarea
-            style={styles.noteInput}
-            value={newNote}
-            onChange={e => setNewNote(e.target.value)}
-            placeholder="Add your notes about this session..."
-            rows={3}
-          />
-          <button
-            style={styles.button}
-            onClick={addNote}
-            disabled={addingNote || !newNote.trim()}
-          >
-            {addingNote ? 'Adding...' : 'Add Note'}
-          </button>
-        </div>
+          </>
+        )}
       </section>
     </div>
   )
@@ -741,6 +811,29 @@ const styles = {
     margin: '0 0 0.75rem 0',
     paddingBottom: '0.4rem',
     borderBottom: '1px solid #e2e8f0',
+  },
+  sectionHeaderBtn: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    fontSize: '1rem',
+    color: '#334155',
+    backgroundColor: 'transparent',
+    border: 'none',
+    cursor: 'pointer',
+    padding: '0 0 0.4rem 0',
+    marginBottom: '0.75rem',
+    paddingBottom: '0.4rem',
+    borderBottom: '1px solid #e2e8f0',
+    fontWeight: 500,
+    width: '100%',
+    textAlign: 'left',
+  },
+  chevron: {
+    display: 'inline-block',
+    fontSize: '0.75rem',
+    minWidth: '1rem',
+    color: '#64748b',
   },
   summaryText: {
     margin: 0,
