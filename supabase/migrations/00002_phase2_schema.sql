@@ -113,12 +113,17 @@ create table public.sessions (
   duration_minutes    integer,
   xp_awarded          integer,
   prep_brief          text,
+  prep_items          jsonb       not null default '[]'::jsonb,
   created_at          timestamptz not null default now(),
   updated_at          timestamptz not null default now()
 );
 
 comment on table public.sessions is
   'Tracks real-world game sessions and links them to in-world time.';
+comment on column public.sessions.prep_items is
+  'JSONB array of DM prep items for this session. '
+  'Each item: {type: "character"|"monster", name: string, description: string, stats: string|null}. '
+  'Used to track NPCs and monsters the DM plans to use.';
 comment on column public.sessions.dm_notes is
   'Private DM notes — visibility enforced at the application layer. '
   'RLS allows all members to SELECT the row; the app must strip dm_notes for non-DMs.';

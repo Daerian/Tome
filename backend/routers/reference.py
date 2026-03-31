@@ -18,8 +18,12 @@ from pydantic_ai.messages import (
 from pydantic_ai.models.anthropic import AnthropicModel
 from pydantic_ai.providers.anthropic import AnthropicProvider
 from dotenv import load_dotenv
-from tools.reference_tools import ALL_REFERENCE_TOOLS
-from tools.fivetools_tools import ALL_5ETOOLS_TOOLS
+from tools.reference_tools import ALL_REFERENCE_TOOLS, lookup_monster
+from tools.fivetools_tools import (
+    ALL_5ETOOLS_TOOLS,
+    lookup_5etools_monster,
+    browse_5etools_source,
+)
 import os
 
 load_dotenv()
@@ -33,7 +37,17 @@ model = AnthropicModel(
     provider=AnthropicProvider(api_key=os.getenv("ANTHROPIC_API_KEY")),
 )
 
-REFERENCE_SYSTEM_PROMPT = (
+# --- Tool lists by role ---
+# DM gets all tools including monster lookups
+DM_TOOLS = ALL_REFERENCE_TOOLS + ALL_5ETOOLS_TOOLS
+
+# Players get everything except monster stat lookups
+PLAYER_TOOLS = [t for t in ALL_REFERENCE_TOOLS if t is not lookup_monster] + [
+    t for t in ALL_5ETOOLS_TOOLS
+    if t not in (lookup_5etools_monster, browse_5etools_source)
+]
+
+DM_SYSTEM_PROMPT = (
     "You are Tome's D&D reference assistant. You help Dungeon Masters and "
     "players look up official D&D 5th Edition rules, monsters, spells, "
     "items, feats, conditions, classes, races, and adventure modules.\n\n"
@@ -56,10 +70,35 @@ REFERENCE_SYSTEM_PROMPT = (
     "Format stat blocks and spell descriptions clearly and readably."
 )
 
-ref_agent = Agent(
+PLAYER_SYSTEM_PROMPT = (
+    "You are Tome's D&D reference assistant. You help players look up "
+    "official D&D 5th Edition rules, spells, items, feats, conditions, "
+    "classes, and races.\n\n"
+    "You have two data sources:\n"
+    "1. Open5e API tools (lookup_spell, etc.) — fast lookups for SRD content.\n"
+    "2. 5etools compendium tools (lookup_5etools_spell, etc.) — covers ALL "
+    "official sourcebooks.\n\n"
+    "Strategy: Try the Open5e tools first. Use 5etools when the user asks for "
+    "non-SRD content or when Open5e returns no results.\n\n"
+    "IMPORTANT: You do NOT have access to monster stat blocks. If a player "
+    "asks for monster stats, politely let them know that monster information "
+    "is only available to the Dungeon Master. You can still discuss general "
+    "monster lore or tactics that a character might know.\n\n"
+    "Always base your answers on the data returned by your tools. "
+    "If a tool returns no results, say so — do not guess or make up stats.\n\n"
+    "Format spell descriptions and rules clearly and readably."
+)
+
+dm_ref_agent = Agent(
     model,
-    system_prompt=REFERENCE_SYSTEM_PROMPT,
-    tools=ALL_REFERENCE_TOOLS + ALL_5ETOOLS_TOOLS,
+    system_prompt=DM_SYSTEM_PROMPT,
+    tools=DM_TOOLS,
+)
+
+player_ref_agent = Agent(
+    model,
+    system_prompt=PLAYER_SYSTEM_PROMPT,
+    tools=PLAYER_TOOLS,
 )
 
 
@@ -76,6 +115,7 @@ class Message(BaseModel):
 class RefRequest(BaseModel):
     messages: list[Message]
     system: str | None = None
+    role: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -127,7 +167,8 @@ async def reference(body: RefRequest):
             "monsters. Do not use 2024 sources (XPHB, XMM).]\n\n"
         )
 
-    result = await ref_agent.run(
+    agent = dm_ref_agent if body.role == "dm" else player_ref_agent
+    result = await agent.run(
         edition_context + user_prompt, message_history=history
     )
 

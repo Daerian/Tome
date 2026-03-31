@@ -1,3 +1,12 @@
+/**
+ * NPCs — Character registry for NPCs, PCs, companions, and deities
+ *
+ * Create and manage characters. Each character has name, type, race, class, alignment,
+ * status (alive/dead/missing/retired), description, backstory, portrait, tags, and
+ * relationships. DM can create/edit/delete. Search by name, description, tags, race, class.
+ * Supports hierarchical relationships between characters.
+ */
+
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 

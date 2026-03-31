@@ -6,13 +6,20 @@ export function useAuth() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    // Restore persisted session on mount
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
       setLoading(false)
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => setSession(session)
+      (event, session) => {
+        setSession(session)
+        // If the token was refreshed, session stays active seamlessly
+        if (event === 'TOKEN_REFRESHED') {
+          setSession(session)
+        }
+      }
     )
 
     return () => subscription.unsubscribe()

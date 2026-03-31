@@ -1,9 +1,17 @@
+/**
+ * Reference — D&D 5e rules lookup tool
+ *
+ * Search D&D 5e rules, spells, classes, feats, items, conditions, etc.
+ * Fetches from Open5e API and 5etools. Useful quick reference during gameplay.
+ * Supports full-text search with formatted markdown results.
+ */
+
 import { useState, useRef, useEffect } from 'react'
 import MessageContent from '../components/MessageContent'
 
 const API_URL = import.meta.env.VITE_API_URL
 
-export default function Reference({ system }) {
+export default function Reference({ system, role }) {
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -33,7 +41,7 @@ export default function Reference({ system }) {
       const res = await fetch(`${API_URL}/api/ref`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: updatedMessages, system: system || null }),
+        body: JSON.stringify({ messages: updatedMessages, system: system || null, role: role || null }),
       })
 
       const data = await res.json()
@@ -51,7 +59,10 @@ export default function Reference({ system }) {
       <div style={styles.messages}>
         {messages.length === 0 && (
           <p style={styles.empty}>
-            Ask about D&D rules, monsters, spells, items, classes, races...
+            {role === 'dm'
+              ? 'Ask about D&D rules, monsters, spells, items, classes, races...'
+              : 'Ask about D&D rules, spells, items, classes, races...'
+            }
           </p>
         )}
         {messages.map((msg, i) => (

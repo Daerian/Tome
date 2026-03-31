@@ -1,3 +1,10 @@
+/**
+ * ProfileSetup — First-time user onboarding
+ *
+ * New users complete their profile with display name and favorite system.
+ * Creates a profile record in the database. Required before accessing campaigns.
+ */
+
 import { useState } from 'react'
 
 export default function ProfileSetup({ session, onComplete }) {

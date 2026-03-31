@@ -103,7 +103,7 @@ def build_session_prep_context(
         sb.table("sessions")
         .select(
             "session_number, title, status, dm_notes, "
-            "in_world_start_date, in_world_end_date"
+            "in_world_start_date, in_world_end_date, prep_items"
         )
         .eq("id", session_id)
         .single()
@@ -268,6 +268,23 @@ def build_session_prep_context(
     if dm_prep_notes and dm_prep_notes.strip():
         lines.append("=== DM'S PLANS FOR THIS SESSION ===")
         lines.append(dm_prep_notes.strip())
+        lines.append("")
+
+    # DM prep items (characters and monsters prepared for this session)
+    prep_items = s.get("prep_items") or []
+    if prep_items:
+        lines.append("=== DM'S PREPARED CHARACTERS & MONSTERS ===")
+        for item in prep_items:
+            item_type = item.get("type", "unknown").upper()
+            name = item.get("name", "Unnamed")
+            desc = item.get("description") or ""
+            stats = item.get("stats") or ""
+            line = f"- [{item_type}] {name}"
+            if desc:
+                line += f": {desc}"
+            if stats:
+                line += f" ({stats})"
+            lines.append(line)
         lines.append("")
 
     # Upcoming session info

@@ -1,3 +1,10 @@
+/**
+ * Account — User profile and settings
+ *
+ * Edit display name, favorite system, and bio. View email and sign out.
+ * Personal user preferences (not campaign-specific).
+ */
+
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
