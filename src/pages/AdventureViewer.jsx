@@ -1,3 +1,11 @@
+/**
+ * AdventureViewer — Published adventure module viewer
+ *
+ * Display full adventure module content indexed by chapters/sections.
+ * Converts markdown to readable formatted text. DM-only view (via campaign.adventure_source).
+ * Provides easy navigation through adventure content during prep and play.
+ */
+
 import { useState, useEffect } from 'react'
 import MessageContent from '../components/MessageContent'
 

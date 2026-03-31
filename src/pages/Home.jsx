@@ -1,3 +1,11 @@
+/**
+ * Home — Campaign list and discovery hub
+ *
+ * Main page after login. Shows all campaigns the user is a member of.
+ * Quick links to create a new campaign or join an existing one via campaign ID.
+ * Displays campaign name, system, member count, and user's role (DM/Player).
+ */
+
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
