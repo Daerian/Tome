@@ -1,3 +1,14 @@
+/**
+ * SessionDetail — Full session view with prep, summary, loot, and notes
+ *
+ * Shows all aspects of a single session:
+ * - Session Prep Brief: AI-generated brief to prepare for the session (DM only)
+ * - Prep Items: Monsters, NPCs, encounters to bring to the table (DM only)
+ * - Summary: Session recap (auto-generate with AI or manually write)
+ * - Loot: Items/treasure looted during the session (all members can log)
+ * - Notes: Shared session notes (all members can add)
+ */
+
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 
@@ -14,6 +25,15 @@ export default function SessionDetail({
   const [notes, setNotes] = useState([])
   const [loading, setLoading] = useState(true)
 
+  // Collapsible sections state
+  const [expandedSections, setExpandedSections] = useState({
+    prep: true,
+    items: true,
+    summary: true,
+    loot: true,
+    notes: true,
+  })
+
   // Summary editing (DM only)
   const [editingSummary, setEditingSummary] = useState(false)
   const [summary, setSummary] = useState('')
@@ -26,14 +46,30 @@ export default function SessionDetail({
   const [prepBrief, setPrepBrief] = useState('')
   const [generatingPrep, setGeneratingPrep] = useState(false)
 
+  // Prep items (DM only)
+  const [prepItems, setPrepItems] = useState([])
+  const [showAddItem, setShowAddItem] = useState(false)
+  const [newItem, setNewItem] = useState({ type: 'monster', name: '', description: '', stats: '' })
+  const [addingItem, setAddingItem] = useState(false)
+
+  // Loot tracking (all members)
+  const [loot, setLoot] = useState([])
+  const [showAddLoot, setShowAddLoot] = useState(false)
+  const [lootForm, setLootForm] = useState({ name: '', quantity: 1, category: 'item', value_gp: '', description: '' })
+  const [addingLoot, setAddingLoot] = useState(false)
+
   // Add note form (all members)
   const [newNote, setNewNote] = useState('')
   const [addingNote, setAddingNote] = useState(false)
 
   useEffect(() => { fetchData() }, [sessionId])
 
+  function toggleSection(key) {
+    setExpandedSections(prev => ({ ...prev, [key]: !prev[key] }))
+  }
+
   async function fetchData() {
-    const [sessionRes, notesRes] = await Promise.all([
+    const [sessionRes, notesRes, lootRes] = await Promise.all([
       supabase
         .from('sessions')
         .select('*')
@@ -46,14 +82,21 @@ export default function SessionDetail({
         .eq('related_entity_type', 'session')
         .eq('related_entity_id', sessionId)
         .order('created_at', { ascending: true }),
+      supabase
+        .from('session_loot')
+        .select('*')
+        .eq('session_id', sessionId)
+        .order('created_at', { ascending: true }),
     ])
 
     if (sessionRes.data) {
       setSessionData(sessionRes.data)
       setSummary(sessionRes.data.summary || '')
       setPrepBrief(sessionRes.data.prep_brief || '')
+      setPrepItems(sessionRes.data.prep_items || [])
     }
     if (notesRes.data) setNotes(notesRes.data)
+    if (lootRes.data) setLoot(lootRes.data)
     setLoading(false)
   }
 
@@ -134,6 +177,73 @@ export default function SessionDetail({
     } finally {
       setGeneratingPrep(false)
     }
+  }
+
+  async function addPrepItem(e) {
+    e.preventDefault()
+    if (!newItem.name.trim()) return
+    setAddingItem(true)
+
+    const item = {
+      type: newItem.type,
+      name: newItem.name.trim(),
+      description: newItem.description.trim() || null,
+      stats: newItem.stats.trim() || null,
+    }
+    const updated = [...prepItems, item]
+
+    const { error } = await supabase
+      .from('sessions')
+      .update({ prep_items: updated })
+      .eq('id', sessionId)
+
+    if (!error) {
+      setPrepItems(updated)
+      setSessionData(prev => ({ ...prev, prep_items: updated }))
+      setNewItem({ type: 'monster', name: '', description: '', stats: '' })
+      setShowAddItem(false)
+    }
+    setAddingItem(false)
+  }
+
+  async function removePrepItem(index) {
+    const updated = prepItems.filter((_, i) => i !== index)
+    const { error } = await supabase
+      .from('sessions')
+      .update({ prep_items: updated })
+      .eq('id', sessionId)
+
+    if (!error) {
+      setPrepItems(updated)
+      setSessionData(prev => ({ ...prev, prep_items: updated }))
+    }
+  }
+
+  async function addLootItem() {
+    if (!lootForm.name.trim()) return
+    setAddingLoot(true)
+    const insert = {
+      campaign_id: campaignId,
+      session_id: sessionId,
+      name: lootForm.name.trim(),
+      quantity: parseInt(lootForm.quantity) || 1,
+      category: lootForm.category,
+      value_gp: lootForm.value_gp ? parseFloat(lootForm.value_gp) : null,
+      description: lootForm.description.trim() || null,
+      logged_by: session.user.id,
+    }
+    const { data, error } = await supabase.from('session_loot').insert(insert).select().single()
+    if (!error && data) {
+      setLoot(prev => [...prev, data])
+      setLootForm({ name: '', quantity: 1, category: 'item', value_gp: '', description: '' })
+    }
+    setAddingLoot(false)
+  }
+
+  async function deleteLootItem(id) {
+    if (!window.confirm('Remove this loot entry?')) return
+    const { error } = await supabase.from('session_loot').delete().eq('id', id)
+    if (!error) setLoot(prev => prev.filter(l => l.id !== id))
   }
 
   async function addNote() {
@@ -218,9 +328,19 @@ export default function SessionDetail({
       {/* Session Prep Brief — DM only */}
       {role === 'dm' && (
         <section style={styles.section}>
-          <h3 style={styles.sectionTitle}>Session Prep Brief</h3>
-          {prepBrief ? (
-            <div style={styles.prepPreview}>
+          <button
+            style={styles.sectionHeaderBtn}
+            onClick={() => toggleSection('prep')}
+          >
+            <span style={styles.chevron}>
+              {expandedSections.prep ? '▼' : '▶'}
+            </span>
+            Session Prep Brief
+          </button>
+          {expandedSections.prep && (
+            <>
+              {prepBrief ? (
+                <div style={styles.prepPreview}>
               <div style={styles.prepContent}>{prepBrief}</div>
               <div style={{ ...styles.editActions, marginTop: '0.75rem' }}>
                 <button
@@ -255,13 +375,125 @@ export default function SessionDetail({
               )}
             </div>
           )}
+            </>
+          )}
+        </section>
+      )}
+
+      {/* Prep Items — DM only */}
+      {role === 'dm' && (
+        <section style={styles.section}>
+          <button
+            style={styles.sectionHeaderBtn}
+            onClick={() => toggleSection('items')}
+          >
+            <span style={styles.chevron}>
+              {expandedSections.items ? '▼' : '▶'}
+            </span>
+            Prep Items ({prepItems.length})
+          </button>
+
+          {expandedSections.items && (
+            <>
+              {prepItems.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '0.75rem' }}>
+              {prepItems.map((item, i) => (
+                <div key={i} style={styles.prepItemCard}>
+                  <div style={styles.prepItemHeader}>
+                    <span style={styles.prepItemType}>{item.type}</span>
+                    <span style={styles.prepItemName}>{item.name}</span>
+                    <button
+                      style={styles.prepItemRemove}
+                      onClick={() => removePrepItem(i)}
+                      title="Remove"
+                    >
+                      &times;
+                    </button>
+                  </div>
+                  {item.description && (
+                    <p style={styles.prepItemDesc}>{item.description}</p>
+                  )}
+                  {item.stats && (
+                    <p style={styles.prepItemStats}>{item.stats}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {showAddItem ? (
+            <form onSubmit={addPrepItem} style={styles.prepItemForm}>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <select
+                  style={styles.prepItemSelect}
+                  value={newItem.type}
+                  onChange={e => setNewItem(prev => ({ ...prev, type: e.target.value }))}
+                >
+                  <option value="monster">Monster</option>
+                  <option value="character">Character / NPC</option>
+                </select>
+                <input
+                  style={{ ...styles.noteInput, flex: 1 }}
+                  value={newItem.name}
+                  onChange={e => setNewItem(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="Name"
+                  required
+                />
+              </div>
+              <textarea
+                style={styles.noteInput}
+                value={newItem.description}
+                onChange={e => setNewItem(prev => ({ ...prev, description: e.target.value }))}
+                placeholder="Description / role in session (optional)"
+                rows={2}
+              />
+              <textarea
+                style={styles.noteInput}
+                value={newItem.stats}
+                onChange={e => setNewItem(prev => ({ ...prev, stats: e.target.value }))}
+                placeholder="Key stats or notes (e.g. CR 5, AC 15, HP 60) (optional)"
+                rows={2}
+              />
+              <div style={styles.editActions}>
+                <button style={styles.button} type="submit" disabled={addingItem}>
+                  {addingItem ? 'Adding...' : 'Add Item'}
+                </button>
+                <button
+                  style={styles.buttonOutline}
+                  type="button"
+                  onClick={() => setShowAddItem(false)}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          ) : (
+            <button
+              style={styles.buttonSmall}
+              onClick={() => setShowAddItem(true)}
+            >
+              + Add Prep Item
+            </button>
+          )}
+            </>
+          )}
         </section>
       )}
 
       {/* Summary section */}
       <section style={styles.section}>
-        <h3 style={styles.sectionTitle}>Summary</h3>
-        {editingSummary ? (
+        <button
+          style={styles.sectionHeaderBtn}
+          onClick={() => toggleSection('summary')}
+        >
+          <span style={styles.chevron}>
+            {expandedSections.summary ? '▼' : '▶'}
+          </span>
+          Summary
+        </button>
+        {expandedSections.summary && (
+          <>
+            {editingSummary ? (
           <div style={styles.editArea}>
             <textarea
               style={styles.textarea}
@@ -332,49 +564,187 @@ export default function SessionDetail({
             )}
           </div>
         )}
+          </>
+        )}
+      </section>
+
+      {/* Loot section */}
+      <section style={styles.section}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+          <button
+            style={styles.sectionHeaderBtn}
+            onClick={() => toggleSection('loot')}
+          >
+            <span style={styles.chevron}>
+              {expandedSections.loot ? '▼' : '▶'}
+            </span>
+            Loot ({loot.length})
+            {loot.length > 0 && (
+              <span style={{ fontWeight: 400, fontSize: '0.8rem', color: '#b45309', marginLeft: '0.5rem' }}>
+                {loot.reduce((sum, l) => sum + (l.value_gp ? l.value_gp * l.quantity : 0), 0).toLocaleString()} GP
+              </span>
+            )}
+          </button>
+          <button
+            style={styles.buttonSmall}
+            onClick={() => setShowAddLoot(!showAddLoot)}
+          >
+            {showAddLoot ? 'Cancel' : '+ Log Loot'}
+          </button>
+        </div>
+
+        {expandedSections.loot && (
+          <>
+
+        {showAddLoot && (
+          <div style={styles.lootForm}>
+            <input
+              style={styles.noteInput}
+              value={lootForm.name}
+              onChange={e => setLootForm({ ...lootForm, name: e.target.value })}
+              placeholder="Item name *"
+            />
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <input
+                style={{ ...styles.noteInput, width: '70px' }}
+                type="number"
+                min="1"
+                value={lootForm.quantity}
+                onChange={e => setLootForm({ ...lootForm, quantity: e.target.value })}
+                placeholder="Qty"
+              />
+              <select
+                style={styles.lootSelect}
+                value={lootForm.category}
+                onChange={e => setLootForm({ ...lootForm, category: e.target.value })}
+              >
+                <option value="gold">Gold/Currency</option>
+                <option value="item">Item</option>
+                <option value="gem">Gem</option>
+                <option value="art">Art Object</option>
+                <option value="magic_item">Magic Item</option>
+                <option value="other">Other</option>
+              </select>
+              <input
+                style={{ ...styles.noteInput, width: '100px' }}
+                type="number"
+                value={lootForm.value_gp}
+                onChange={e => setLootForm({ ...lootForm, value_gp: e.target.value })}
+                placeholder="Value (GP)"
+              />
+            </div>
+            <input
+              style={styles.noteInput}
+              value={lootForm.description}
+              onChange={e => setLootForm({ ...lootForm, description: e.target.value })}
+              placeholder="Description (optional)"
+            />
+            <button
+              style={styles.button}
+              onClick={addLootItem}
+              disabled={addingLoot || !lootForm.name.trim()}
+            >
+              {addingLoot ? 'Adding...' : 'Log Loot'}
+            </button>
+          </div>
+        )}
+
+        {loot.length === 0 && !showAddLoot && (
+          <p style={styles.muted}>No loot logged for this session.</p>
+        )}
+
+        {loot.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+            {loot.map(l => (
+              <div key={l.id} style={styles.lootCard}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span style={{ ...styles.lootCatBadge, backgroundColor: lootCatColors[l.category]?.bg || '#f1f5f9', color: lootCatColors[l.category]?.text || '#475569' }}>
+                      {l.category.replace('_', ' ')}
+                    </span>
+                    <span style={{ fontWeight: 500, color: '#1e293b', fontSize: '0.875rem' }}>
+                      {l.quantity > 1 ? `${l.quantity}x ` : ''}{l.name}
+                    </span>
+                    {l.value_gp != null && (
+                      <span style={{ fontSize: '0.75rem', color: '#b45309' }}>
+                        {(l.value_gp * l.quantity).toLocaleString()} GP
+                      </span>
+                    )}
+                  </div>
+                  {(role === 'dm' || l.logged_by === session.user.id) && (
+                    <button
+                      style={styles.lootRemoveBtn}
+                      onClick={() => deleteLootItem(l.id)}
+                      title="Remove"
+                    >
+                      &times;
+                    </button>
+                  )}
+                </div>
+                {l.description && (
+                  <p style={{ margin: '0.15rem 0 0 0', fontSize: '0.75rem', color: '#64748b' }}>{l.description}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+          </>
+        )}
       </section>
 
       {/* Notes section */}
       <section style={styles.section}>
-        <h3 style={styles.sectionTitle}>Notes ({notes.length})</h3>
+        <button
+          style={styles.sectionHeaderBtn}
+          onClick={() => toggleSection('notes')}
+        >
+          <span style={styles.chevron}>
+            {expandedSections.notes ? '▼' : '▶'}
+          </span>
+          Notes ({notes.length})
+        </button>
 
-        {notes.length === 0 && (
-          <p style={styles.muted}>
-            No notes yet. Be the first to add one!
-          </p>
-        )}
+        {expandedSections.notes && (
+          <>
+            {notes.length === 0 && (
+              <p style={styles.muted}>
+                No notes yet. Be the first to add one!
+              </p>
+            )}
 
-        {notes.map(n => (
-          <div key={n.id} style={styles.noteCard}>
-            <div style={styles.noteMeta}>
-              <span style={styles.noteAuthor}>
-                {n.profiles?.display_name || 'Unknown'}
-              </span>
-              <span style={styles.noteDate}>
-                {new Date(n.created_at).toLocaleDateString()}
-              </span>
+            {notes.map(n => (
+              <div key={n.id} style={styles.noteCard}>
+                <div style={styles.noteMeta}>
+                  <span style={styles.noteAuthor}>
+                    {n.profiles?.display_name || 'Unknown'}
+                  </span>
+                  <span style={styles.noteDate}>
+                    {new Date(n.created_at).toLocaleDateString()}
+                  </span>
+                </div>
+                <p style={styles.noteContent}>{n.content}</p>
+              </div>
+            ))}
+
+            {/* Add-note form */}
+            <div style={styles.addNoteForm}>
+              <textarea
+                style={styles.noteInput}
+                value={newNote}
+                onChange={e => setNewNote(e.target.value)}
+                placeholder="Add your notes about this session..."
+                rows={3}
+              />
+              <button
+                style={styles.button}
+                onClick={addNote}
+                disabled={addingNote || !newNote.trim()}
+              >
+                {addingNote ? 'Adding...' : 'Add Note'}
+              </button>
             </div>
-            <p style={styles.noteContent}>{n.content}</p>
-          </div>
-        ))}
-
-        {/* Add-note form */}
-        <div style={styles.addNoteForm}>
-          <textarea
-            style={styles.noteInput}
-            value={newNote}
-            onChange={e => setNewNote(e.target.value)}
-            placeholder="Add your notes about this session..."
-            rows={3}
-          />
-          <button
-            style={styles.button}
-            onClick={addNote}
-            disabled={addingNote || !newNote.trim()}
-          >
-            {addingNote ? 'Adding...' : 'Add Note'}
-          </button>
-        </div>
+          </>
+        )}
       </section>
     </div>
   )
@@ -441,6 +811,29 @@ const styles = {
     margin: '0 0 0.75rem 0',
     paddingBottom: '0.4rem',
     borderBottom: '1px solid #e2e8f0',
+  },
+  sectionHeaderBtn: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    fontSize: '1rem',
+    color: '#334155',
+    backgroundColor: 'transparent',
+    border: 'none',
+    cursor: 'pointer',
+    padding: '0 0 0.4rem 0',
+    marginBottom: '0.75rem',
+    paddingBottom: '0.4rem',
+    borderBottom: '1px solid #e2e8f0',
+    fontWeight: 500,
+    width: '100%',
+    textAlign: 'left',
+  },
+  chevron: {
+    display: 'inline-block',
+    fontSize: '0.75rem',
+    minWidth: '1rem',
+    color: '#64748b',
   },
   summaryText: {
     margin: 0,
@@ -590,4 +983,120 @@ const styles = {
     fontFamily: 'inherit',
     lineHeight: 1.5,
   },
+  prepItemCard: {
+    padding: '0.6rem 0.75rem',
+    borderRadius: '6px',
+    backgroundColor: '#f0fdf4',
+    border: '1px solid #bbf7d0',
+  },
+  prepItemHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+  },
+  prepItemType: {
+    fontSize: '0.65rem',
+    fontWeight: 600,
+    padding: '0.1rem 0.35rem',
+    borderRadius: '4px',
+    backgroundColor: '#dcfce7',
+    color: '#166534',
+    textTransform: 'uppercase',
+  },
+  prepItemName: {
+    fontSize: '0.875rem',
+    fontWeight: 600,
+    color: '#1e293b',
+  },
+  prepItemRemove: {
+    marginLeft: 'auto',
+    background: 'none',
+    border: 'none',
+    color: '#dc2626',
+    fontSize: '1rem',
+    cursor: 'pointer',
+    lineHeight: 1,
+    padding: '0 0.25rem',
+  },
+  prepItemDesc: {
+    margin: '0.2rem 0 0 0',
+    fontSize: '0.8rem',
+    color: '#475569',
+    lineHeight: 1.4,
+  },
+  prepItemStats: {
+    margin: '0.15rem 0 0 0',
+    fontSize: '0.75rem',
+    color: '#059669',
+    fontFamily: 'monospace',
+  },
+  prepItemForm: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.5rem',
+    padding: '0.75rem',
+    backgroundColor: '#f8fafc',
+    borderRadius: '8px',
+    border: '1px solid #e2e8f0',
+  },
+  prepItemSelect: {
+    padding: '0.5rem',
+    borderRadius: '6px',
+    border: '1px solid #cbd5e1',
+    fontSize: '0.8rem',
+    outline: 'none',
+    fontFamily: 'inherit',
+  },
+  lootForm: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.5rem',
+    padding: '0.75rem',
+    backgroundColor: '#f8fafc',
+    borderRadius: '8px',
+    border: '1px solid #e2e8f0',
+    marginBottom: '0.75rem',
+  },
+  lootSelect: {
+    padding: '0.5rem',
+    borderRadius: '6px',
+    border: '1px solid #cbd5e1',
+    fontSize: '0.8rem',
+    outline: 'none',
+    fontFamily: 'inherit',
+    backgroundColor: '#fff',
+    flex: 1,
+  },
+  lootCard: {
+    padding: '0.5rem 0.75rem',
+    borderRadius: '6px',
+    backgroundColor: '#f8fafc',
+    border: '1px solid #f1f5f9',
+  },
+  lootCatBadge: {
+    fontSize: '0.6rem',
+    fontWeight: 600,
+    padding: '0.1rem 0.35rem',
+    borderRadius: '3px',
+    textTransform: 'uppercase',
+  },
+  lootRemoveBtn: {
+    background: 'none',
+    border: 'none',
+    color: '#94a3b8',
+    cursor: 'pointer',
+    fontSize: '1rem',
+    padding: '0 0.3rem',
+    fontFamily: 'inherit',
+    lineHeight: 1,
+  },
+}
+
+const lootCatColors = {
+  gold: { bg: '#fef3c7', text: '#b45309' },
+  item: { bg: '#f1f5f9', text: '#475569' },
+  gem: { bg: '#ede9fe', text: '#6d28d9' },
+  art: { bg: '#fce7f3', text: '#be185d' },
+  magic_item: { bg: '#dbeafe', text: '#1d4ed8' },
+  other: { bg: '#f1f5f9', text: '#64748b' },
 }

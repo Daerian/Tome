@@ -1,3 +1,12 @@
+/**
+ * Locations — Hierarchical world building with locations and sub-locations
+ *
+ * Create and manage locations in a hierarchy (continent → region → city → building → room).
+ * Each location has name, type, description, DM-only notes, public/private/secret visibility,
+ * parent location link, image, tags, and relationships. Players see locations based on
+ * visibility. DM can create/edit/delete and assign children to parents.
+ */
+
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 

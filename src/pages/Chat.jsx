@@ -1,3 +1,11 @@
+/**
+ * Chat — AI companion chat for campaign help and collaboration
+ *
+ * Multi-turn conversation with Claude AI. Optionally passes campaign context
+ * (characters, locations, session notes) to AI for contextual help. Displays
+ * formatted messages with markdown support. Accessible to all campaign members.
+ */
+
 import { useState, useRef, useEffect } from 'react'
 
 const API_URL = import.meta.env.VITE_API_URL

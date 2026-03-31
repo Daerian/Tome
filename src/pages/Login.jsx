@@ -1,3 +1,10 @@
+/**
+ * Login — Authentication entry point
+ *
+ * Shows branded landing page with Google Sign-In button.
+ * Routes to ProfileSetup after successful authentication.
+ */
+
 export default function Login({ onGoogleSignIn }) {
   return (
     <div style={styles.container}>

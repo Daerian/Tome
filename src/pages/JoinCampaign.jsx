@@ -1,3 +1,11 @@
+/**
+ * JoinCampaign — Player campaign onboarding
+ *
+ * Players join an existing campaign by entering its ID (shared by DM).
+ * Creates a campaign_members entry with 'player' role.
+ * Redirects to campaign dashboard on successful join.
+ */
+
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'

@@ -1,3 +1,11 @@
+/**
+ * Sessions — List and manage campaign game sessions
+ *
+ * Shows a list of all sessions for a campaign. DM can create new sessions (which
+ * auto-generates a prep brief via AI). Clicking a session opens SessionDetail.
+ * Displays session number, status, title, and a preview of the summary.
+ */
+
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import SessionDetail from './SessionDetail'

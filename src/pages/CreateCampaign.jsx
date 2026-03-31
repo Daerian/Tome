@@ -1,3 +1,11 @@
+/**
+ * CreateCampaign — New campaign setup
+ *
+ * DM creates a new campaign with name, description, and system (5e, Pathfinder, etc).
+ * Optionally link an adventure module. User becomes DM automatically.
+ * Redirects to campaign dashboard on creation.
+ */
+
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'

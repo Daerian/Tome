@@ -1,9 +1,20 @@
+/**
+ * CampaignView — Main campaign dashboard
+ *
+ * Split-panel layout showing campaign details with left/right navigation.
+ * Left panel: Sessions → Wiki (NPCs/Locations/Missions/Treasury) → Timeline → Adventure
+ * Right panel: Chat (with DM/AI context) → D&D 5e Rules Reference
+ *
+ * Fetches campaign + user role on mount. Displays campaign info, allows DM to delete.
+ * Acts as the central hub for all campaign management and play.
+ */
+
 import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import Sessions from './Sessions'
-import NPCs from './NPCs'
-import Locations from './Locations'
+import Wiki from './Wiki'
+import Timeline from './Timeline'
 import Chat from './Chat'
 import Reference from './Reference'
 import AdventureViewer from './AdventureViewer'
@@ -117,18 +128,18 @@ export default function CampaignView({ session }) {
               Sessions
             </button>
             <button
-              style={leftTab === 'npcs' ? styles.panelTabActive : styles.panelTab}
-              onClick={() => setLeftTab('npcs')}
+              style={leftTab === 'wiki' ? styles.panelTabActive : styles.panelTab}
+              onClick={() => setLeftTab('wiki')}
             >
-              NPCs
+              Wiki
             </button>
             <button
-              style={leftTab === 'locations' ? styles.panelTabActive : styles.panelTab}
-              onClick={() => setLeftTab('locations')}
+              style={leftTab === 'timeline' ? styles.panelTabActive : styles.panelTab}
+              onClick={() => setLeftTab('timeline')}
             >
-              Locations
+              Timeline
             </button>
-            {campaign.adventure_source && (
+            {campaign.adventure_source && role === 'dm' && (
               <button
                 style={leftTab === 'adventure' ? styles.panelTabActive : styles.panelTab}
                 onClick={() => setLeftTab('adventure')}
@@ -141,13 +152,13 @@ export default function CampaignView({ session }) {
             {leftTab === 'sessions' && (
               <Sessions campaignId={id} session={session} role={role} />
             )}
-            {leftTab === 'npcs' && (
-              <NPCs campaignId={id} session={session} role={role} />
+            {leftTab === 'wiki' && (
+              <Wiki campaignId={id} session={session} role={role} />
             )}
-            {leftTab === 'locations' && (
-              <Locations campaignId={id} session={session} role={role} />
+            {leftTab === 'timeline' && (
+              <Timeline campaignId={id} role={role} />
             )}
-            {leftTab === 'adventure' && campaign.adventure_source && (
+            {leftTab === 'adventure' && campaign.adventure_source && role === 'dm' && (
               <AdventureViewer code={campaign.adventure_source} />
             )}
           </div>
@@ -174,7 +185,7 @@ export default function CampaignView({ session }) {
           </div>
           <div style={styles.panelContent}>
             {rightTab === 'chat' && <Chat campaignId={id} session={session} role={role} />}
-            {rightTab === 'reference' && <Reference system={campaign.system} />}
+            {rightTab === 'reference' && <Reference system={campaign.system} role={role} />}
           </div>
         </div>
       </div>
