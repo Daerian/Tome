@@ -1,16 +1,42 @@
-# React + Vite
+# Project Name
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## Overview
+[Brief description]
 
-Currently, two official plugins are available:
+## Prerequisites
+- Node.js 20+
+- Python 3.14+
+- Git
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Installation
 
-## React Compiler
+### Frontend
+\`\`\`bash
+npm install
+\`\`\`
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### Backend
+\`\`\`bash
+cd backend
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install -r requirements.txt
+\`\`\`
 
-## Expanding the ESLint configuration
+## Running the App
+1. Open two terminals pointing to the root of this project
+2. In the first one, run "npm run dev"
+3. In the second run "uvicorn main:app --reload --port 8000"
+4. Host a database and get it's credentials
+5. Create a file named ".env.local" in the root directory by making a clone of ".env.example" and renaming it
+6. Fill in the secrets to point to your databse by editing the approprate credentials
+7. Under backend/ create a copy of that ".env.local" file and rename it to be ".env"
+8. Add your API keys here as well where relevant. You'll need an Anthropic API Key
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+This should create a locally running version of the app
+
+## Testing
+[Instructions]
+
+## Contributing
+See CONTRIBUTING.md

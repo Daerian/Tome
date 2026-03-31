@@ -1,0 +1,33 @@
+# CODEOWNERS
+
+# Default owner
+
+* @Daerian
+
+# Frontend
+
+/src/ @Daerian
+
+# Backend 
+
+/backend/ @Daerian
+
+# DevOps / CI
+
+/.github/ @Daerian
+
+# Root-level configs
+
+package.json @Daerian
+vite.config.* @Daerian
+tsconfig.* @Daerian
+
+# Backend configs
+
+/backend/requirements.txt @Daerian
+/backend/pyproject.toml @Daerian
+
+# General config files
+
+*.yml @Daerian
+*.yaml @Daerian
