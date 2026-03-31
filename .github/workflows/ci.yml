@@ -29,7 +29,7 @@ jobs:
         run: npm run build
 
   backend:
-    name: Backend (Python)
+    name: Backend
     runs-on: ubuntu-latest
 
     steps:
