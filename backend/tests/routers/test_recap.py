@@ -2,10 +2,10 @@
 Tests for routers/recap.py.
 
 Covers:
-- Session or campaign not found → early return
-- No notes of any kind → "Add notes first" message
-- Player notes only → agent is called
-- Contributed notes only → agent is called with attribution
+- Session or campaign not found means early return
+- No notes of any kind means "Add notes first" message
+- Player notes only means agent is called
+- Contributed notes only means agent is called with attribution
 - Previous session summary included in context
 """
 
@@ -67,7 +67,7 @@ NOTE = [{"content": "Tav picked the lock.", "profiles": {"display_name": "Alice"
 
 @pytest.mark.asyncio
 async def test_recap_campaign_not_found():
-    # sessions: first call (current session) → SESSION so data check passes;
+    # sessions: first call (current session): SESSION so data check passes;
     # but campaign is None so we hit the not-found branch.
     sb = _make_sb({"campaigns": None, "sessions": (SESSION, []), "notes": []})
     with patch("routers.recap.sb", sb):
