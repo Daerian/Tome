@@ -7,12 +7,11 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-# frontend dependencies
-*.local
-build
-dist
-dist-ssr
-node_modules
+# Frontend build/deps
+frontend/dist
+frontend/dist-ssr
+frontend/node_modules
+frontend/.vite
 
 # env files — never commit these
 .env
