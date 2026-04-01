@@ -1,8 +1,10 @@
 import os
+
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import generate, recap, session_prep, reference, adventure, extract_beats
-from dotenv import load_dotenv
+
+from routers import adventure, extract_beats, generate, recap, reference, session_prep
 
 # Load environment variables from backend/.env when running locally.
 # In production (Render) these are injected directly into the environment.
@@ -23,9 +25,9 @@ if os.getenv("FRONTEND_URL"):
 # Without this, the browser blocks cross-origin requests.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,   # only the listed URLs may call this API
-    allow_methods=["*"],     # allow GET, POST, etc.
-    allow_headers=["*"],     # allow Content-Type, Authorization, etc.
+    allow_origins=origins,  # only the listed URLs may call this API
+    allow_methods=["*"],  # allow GET, POST, etc.
+    allow_headers=["*"],  # allow Content-Type, Authorization, etc.
 )
 
 # Mount all routes defined in routers/generate.py under the /api prefix.

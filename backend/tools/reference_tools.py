@@ -42,8 +42,7 @@ async def lookup_spell(name: str) -> str:
     for spell in results:
         lines.append(f"### {spell['name']}")
         lines.append(
-            f"Level {spell.get('level_int', '?')} "
-            f"{spell.get('school', '?')} spell"
+            f"Level {spell.get('level_int', '?')} {spell.get('school', '?')} spell"
         )
         lines.append(f"Casting Time: {spell.get('casting_time', '?')}")
         lines.append(f"Range: {spell.get('range', '?')}")
@@ -78,16 +77,14 @@ async def lookup_monster(name: str, cr: str = "") -> str:
     for m in results:
         lines.append(f"### {m['name']}")
         lines.append(
-            f"{m.get('size', '?')} {m.get('type', '?')}, "
-            f"{m.get('alignment', '?')}"
+            f"{m.get('size', '?')} {m.get('type', '?')}, {m.get('alignment', '?')}"
         )
-        lines.append(f"CR: {m.get('challenge_rating', '?')} "
-                      f"(XP: {m.get('xp', '?')})")
-        lines.append(f"AC: {m.get('armor_class', '?')} | "
-                      f"HP: {m.get('hit_points', '?')} ({m.get('hit_dice', '?')})")
+        lines.append(f"CR: {m.get('challenge_rating', '?')} (XP: {m.get('xp', '?')})")
         lines.append(
-            f"Speed: {m.get('speed', {}).get('walk', '?')}"
+            f"AC: {m.get('armor_class', '?')} | "
+            f"HP: {m.get('hit_points', '?')} ({m.get('hit_dice', '?')})"
         )
+        lines.append(f"Speed: {m.get('speed', {}).get('walk', '?')}")
         lines.append(
             f"STR {m.get('strength', '?')} | DEX {m.get('dexterity', '?')} | "
             f"CON {m.get('constitution', '?')} | INT {m.get('intelligence', '?')} | "
@@ -99,11 +96,11 @@ async def lookup_monster(name: str, cr: str = "") -> str:
             lines.append(f"Languages: {m['languages']}")
 
         # Special abilities
-        for ability in (m.get("special_abilities") or []):
+        for ability in m.get("special_abilities") or []:
             lines.append(f"\n**{ability['name']}**: {ability.get('desc', '')}")
 
         # Actions
-        for action in (m.get("actions") or []):
+        for action in m.get("actions") or []:
             lines.append(f"\n**{action['name']}**: {action.get('desc', '')}")
 
         # Legendary actions
@@ -116,7 +113,9 @@ async def lookup_monster(name: str, cr: str = "") -> str:
 
         # Structured JSON for frontend interactive rendering
         speed = m.get("speed") or {}
-        speed_parts = [f"{k} {v}" for k, v in speed.items()] if isinstance(speed, dict) else []
+        speed_parts = (
+            [f"{k} {v}" for k, v in speed.items()] if isinstance(speed, dict) else []
+        )
         statblock = {
             "name": m.get("name", "Unknown"),
             "source": "SRD 5.1",
@@ -124,7 +123,10 @@ async def lookup_monster(name: str, cr: str = "") -> str:
             "type": m.get("type", "?"),
             "alignment": m.get("alignment", "?"),
             "ac": str(m.get("armor_class", "?")),
-            "hp": {"average": m.get("hit_points", "?"), "formula": m.get("hit_dice", "?")},
+            "hp": {
+                "average": m.get("hit_points", "?"),
+                "formula": m.get("hit_dice", "?"),
+            },
             "speed": ", ".join(speed_parts) if speed_parts else "?",
             "str": m.get("strength", "?"),
             "dex": m.get("dexterity", "?"),
@@ -172,8 +174,7 @@ async def lookup_item(name: str) -> str:
     for item in results:
         lines.append(f"### {item['name']}")
         lines.append(
-            f"Type: {item.get('type', '?')} | "
-            f"Rarity: {item.get('rarity', '?')}"
+            f"Type: {item.get('type', '?')} | Rarity: {item.get('rarity', '?')}"
         )
         if item.get("requires_attunement") and item["requires_attunement"] != "":
             lines.append(f"Requires Attunement: {item['requires_attunement']}")

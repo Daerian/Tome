@@ -8,9 +8,9 @@ them in a thread pool automatically.
 """
 
 from pydantic_ai import RunContext
+
 from tools.deps import CampaignDeps
 from tools.fivetools_tools import browse_5etools_adventure
-
 
 # ---------------------------------------------------------------------------
 # Read tools
@@ -46,9 +46,7 @@ def get_session_list(ctx: RunContext[CampaignDeps]) -> str:
     return "\n".join(lines)
 
 
-def get_session_details(
-    ctx: RunContext[CampaignDeps], session_number: int
-) -> str:
+def get_session_details(ctx: RunContext[CampaignDeps], session_number: int) -> str:
     """Get full details for a specific session by its number, including
     summary, DM notes, player notes, contributed notes, and attendees."""
 
@@ -180,9 +178,7 @@ def search_characters(
     return "\n".join(lines)
 
 
-def search_notes(
-    ctx: RunContext[CampaignDeps], query: str = ""
-) -> str:
+def search_notes(ctx: RunContext[CampaignDeps], query: str = "") -> str:
     """Search through session notes in this campaign. Optionally filter
     by keyword. Returns note content with author names."""
 
@@ -215,9 +211,7 @@ def search_notes(
     return "\n".join(lines)
 
 
-def get_locations(
-    ctx: RunContext[CampaignDeps], name: str = "", tag: str = ""
-) -> str:
+def get_locations(ctx: RunContext[CampaignDeps], name: str = "", tag: str = "") -> str:
     """Get locations in this campaign. Optionally filter by name (partial
     match) and/or tag. Returns name, type, description, tags,
     relationships, and parent location."""
@@ -272,9 +266,7 @@ def get_locations(
     return "\n".join(lines)
 
 
-def get_missions(
-    ctx: RunContext[CampaignDeps], status: str = ""
-) -> str:
+def get_missions(ctx: RunContext[CampaignDeps], status: str = "") -> str:
     """Get missions in this campaign. Optionally filter by status
     (available, active, completed, failed). Returns title, type, status,
     priority, quest giver, and reward."""
@@ -325,9 +317,7 @@ def get_missions(
     return "\n".join(lines)
 
 
-def get_factions(
-    ctx: RunContext[CampaignDeps], name: str = ""
-) -> str:
+def get_factions(ctx: RunContext[CampaignDeps], name: str = "") -> str:
     """Get factions in this campaign. Optionally filter by name (partial
     match). Returns name, type, alignment, description, goals, leader,
     and headquarters."""
@@ -350,14 +340,22 @@ def get_factions(
         return f"No active factions found{' matching ' + repr(name) if name else ''}."
 
     # Resolve FK names
-    char_ids = [f["leader_character_id"] for f in factions if f.get("leader_character_id")]
-    loc_ids = [f["headquarters_location_id"] for f in factions if f.get("headquarters_location_id")]
+    char_ids = [
+        f["leader_character_id"] for f in factions if f.get("leader_character_id")
+    ]
+    loc_ids = [
+        f["headquarters_location_id"]
+        for f in factions
+        if f.get("headquarters_location_id")
+    ]
 
     char_map = {}
     if char_ids:
         chars_res = (
             ctx.deps.supabase.table("characters")
-            .select("id, name").in_("id", char_ids).execute()
+            .select("id, name")
+            .in_("id", char_ids)
+            .execute()
         )
         char_map = {ch["id"]: ch["name"] for ch in (chars_res.data or [])}
 
@@ -365,7 +363,9 @@ def get_factions(
     if loc_ids:
         locs_res = (
             ctx.deps.supabase.table("locations")
-            .select("id, name").in_("id", loc_ids).execute()
+            .select("id, name")
+            .in_("id", loc_ids)
+            .execute()
         )
         loc_map = {loc["id"]: loc["name"] for loc in (locs_res.data or [])}
 
@@ -378,9 +378,13 @@ def get_factions(
         if f.get("goals"):
             lines.append(f"  Goals: {f['goals']}")
         if f.get("leader_character_id"):
-            lines.append(f"  Leader: {char_map.get(f['leader_character_id'], 'Unknown')}")
+            lines.append(
+                f"  Leader: {char_map.get(f['leader_character_id'], 'Unknown')}"
+            )
         if f.get("headquarters_location_id"):
-            lines.append(f"  HQ: {loc_map.get(f['headquarters_location_id'], 'Unknown')}")
+            lines.append(
+                f"  HQ: {loc_map.get(f['headquarters_location_id'], 'Unknown')}"
+            )
     return "\n".join(lines)
 
 
@@ -403,17 +407,14 @@ def get_story_beats(ctx: RunContext[CampaignDeps]) -> str:
     lines = []
     for b in beats:
         lines.append(
-            f"- [{b['type']}, {b['status']}] {b['title']}: "
-            f"{b.get('description', '')}"
+            f"- [{b['type']}, {b['status']}] {b['title']}: {b.get('description', '')}"
         )
         if b.get("notes"):
             lines.append(f"  DM Notes: {b['notes']}")
     return "\n".join(lines)
 
 
-def get_timeline_events(
-    ctx: RunContext[CampaignDeps], limit: int = 20
-) -> str:
+def get_timeline_events(ctx: RunContext[CampaignDeps], limit: int = 20) -> str:
     """Get recent timeline events in this campaign. Returns title,
     description, event type, importance, in-world date, and location."""
 
@@ -422,8 +423,7 @@ def get_timeline_events(
     result = (
         ctx.deps.supabase.table("timeline_events")
         .select(
-            "title, description, event_type, importance, "
-            "in_world_date, location_id"
+            "title, description, event_type, importance, in_world_date, location_id"
         )
         .eq("campaign_id", ctx.deps.campaign_id)
         .order("sort_order", desc=True)
@@ -440,7 +440,9 @@ def get_timeline_events(
     if loc_ids:
         locs_res = (
             ctx.deps.supabase.table("locations")
-            .select("id, name").in_("id", loc_ids).execute()
+            .select("id, name")
+            .in_("id", loc_ids)
+            .execute()
         )
         loc_map = {loc["id"]: loc["name"] for loc in (locs_res.data or [])}
 
@@ -474,20 +476,22 @@ def add_note(
 
     result = (
         ctx.deps.supabase.table("notes")
-        .insert({
-            "campaign_id": ctx.deps.campaign_id,
-            "created_by": ctx.deps.user_id,
-            "related_entity_id": session_id,
-            "related_entity_type": "session",
-            "type": "session_note",
-            "visibility": "public",
-            "title": title or "Chat Note",
-            "content": content,
-        })
+        .insert(
+            {
+                "campaign_id": ctx.deps.campaign_id,
+                "created_by": ctx.deps.user_id,
+                "related_entity_id": session_id,
+                "related_entity_type": "session",
+                "type": "session_note",
+                "visibility": "public",
+                "title": title or "Chat Note",
+                "content": content,
+            }
+        )
         .execute()
     )
     if result.data:
-        return f"Note saved successfully: \"{content[:80]}{'...' if len(content) > 80 else ''}\""
+        return f'Note saved successfully: "{content[:80]}{"..." if len(content) > 80 else ""}"'
     return "Failed to save note."
 
 
@@ -518,9 +522,9 @@ def update_character_status(
     ch = characters[0]
     old_status = ch.get("status", "unknown")
 
-    ctx.deps.supabase.table("characters").update(
-        {"status": status}
-    ).eq("id", ch["id"]).execute()
+    ctx.deps.supabase.table("characters").update({"status": status}).eq(
+        "id", ch["id"]
+    ).execute()
 
     return f"Updated {ch['name']}'s status from '{old_status}' to '{status}'."
 
@@ -547,13 +551,9 @@ def add_timeline_event(
     if in_world_date:
         data["in_world_date"] = in_world_date
 
-    result = (
-        ctx.deps.supabase.table("timeline_events")
-        .insert(data)
-        .execute()
-    )
+    result = ctx.deps.supabase.table("timeline_events").insert(data).execute()
     if result.data:
-        return f"Timeline event recorded: \"{title}\""
+        return f'Timeline event recorded: "{title}"'
     return "Failed to record timeline event."
 
 
@@ -765,9 +765,9 @@ def update_mission_status(
     m = missions[0]
     old_status = m.get("status", "unknown")
 
-    ctx.deps.supabase.table("missions").update(
-        {"status": new_status}
-    ).eq("id", m["id"]).execute()
+    ctx.deps.supabase.table("missions").update({"status": new_status}).eq(
+        "id", m["id"]
+    ).execute()
 
     return f"Updated mission '{m['title']}' from '{old_status}' to '{new_status}'."
 
