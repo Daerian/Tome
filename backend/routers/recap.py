@@ -6,14 +6,16 @@ summary for continuity), then asks Claude to write a polished 2-4 paragraph
 narrative recap that the DM can adopt as the official session summary.
 """
 
+import os
+
+from dotenv import load_dotenv
 from fastapi import APIRouter
 from pydantic import BaseModel
 from pydantic_ai import Agent
 from pydantic_ai.models.anthropic import AnthropicModel
 from pydantic_ai.providers.anthropic import AnthropicProvider
-from dotenv import load_dotenv
+
 from supabase_client import supabase as sb
-import os
 
 load_dotenv()
 
