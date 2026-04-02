@@ -6,23 +6,25 @@ can query and modify campaign data on demand via Supabase.  When no
 campaign_id is provided a simpler general-purpose agent is used.
 """
 
+import os
+
+from dotenv import load_dotenv
 from fastapi import APIRouter
 from pydantic import BaseModel
 from pydantic_ai import Agent, RunContext
 from pydantic_ai.messages import (
     ModelRequest,
     ModelResponse,
-    UserPromptPart,
     TextPart,
+    UserPromptPart,
 )
 from pydantic_ai.models.anthropic import AnthropicModel
 from pydantic_ai.providers.anthropic import AnthropicProvider
-from dotenv import load_dotenv
+
 from supabase_client import supabase as sb
-from tools.deps import CampaignDeps
 from tools.campaign_tools import ALL_CAMPAIGN_TOOLS
+from tools.deps import CampaignDeps
 from tools.fivetools_tools import ADVENTURE_MAP
-import os
 
 # Load .env before reading any env vars so the API key is available locally.
 # In production (Render) the key is already in the environment — load_dotenv
@@ -86,8 +88,8 @@ def _campaign_overview(ctx: RunContext[CampaignDeps]) -> str:
 class Message(BaseModel):
     """A single chat message with a speaker role and text content."""
 
-    role: str      # "user" or "assistant"
-    content: str   # the message text
+    role: str  # "user" or "assistant"
+    content: str  # the message text
 
 
 class GenerateRequest(BaseModel):
@@ -115,13 +117,9 @@ def build_history(messages: list[Message]) -> list:
 
     for msg in messages:
         if msg.role == "user":
-            history.append(
-                ModelRequest(parts=[UserPromptPart(content=msg.content)])
-            )
+            history.append(ModelRequest(parts=[UserPromptPart(content=msg.content)]))
         else:
-            history.append(
-                ModelResponse(parts=[TextPart(content=msg.content)])
-            )
+            history.append(ModelResponse(parts=[TextPart(content=msg.content)]))
 
     return history
 
@@ -144,26 +142,56 @@ def get_campaign_overview(supabase, campaign_id: str) -> str:
     c = campaign_res.data
 
     # Quick counts via select("id") — lightweight queries
-    sessions = supabase.table("sessions").select("id").eq("campaign_id", campaign_id).execute().data or []
-    characters = supabase.table("characters").select("id, type").eq("campaign_id", campaign_id).execute().data or []
-    locations = supabase.table("locations").select("id").eq("campaign_id", campaign_id).execute().data or []
+    sessions = (
+        supabase.table("sessions")
+        .select("id")
+        .eq("campaign_id", campaign_id)
+        .execute()
+        .data
+        or []
+    )
+    characters = (
+        supabase.table("characters")
+        .select("id, type")
+        .eq("campaign_id", campaign_id)
+        .execute()
+        .data
+        or []
+    )
+    locations = (
+        supabase.table("locations")
+        .select("id")
+        .eq("campaign_id", campaign_id)
+        .execute()
+        .data
+        or []
+    )
     missions = (
-        supabase.table("missions").select("id")
+        supabase.table("missions")
+        .select("id")
         .eq("campaign_id", campaign_id)
         .in_("status", ["available", "active"])
-        .execute().data or []
+        .execute()
+        .data
+        or []
     )
     beats = (
-        supabase.table("story_beats").select("id")
+        supabase.table("story_beats")
+        .select("id")
         .eq("campaign_id", campaign_id)
         .in_("status", ["planted", "active"])
-        .execute().data or []
+        .execute()
+        .data
+        or []
     )
     factions = (
-        supabase.table("factions").select("id")
+        supabase.table("factions")
+        .select("id")
         .eq("campaign_id", campaign_id)
         .eq("status", "active")
-        .execute().data or []
+        .execute()
+        .data
+        or []
     )
 
     pc_count = len([ch for ch in characters if ch.get("type") == "pc"])
@@ -240,9 +268,7 @@ async def generate(body: GenerateRequest):
             user_prompt, deps=deps, message_history=history
         )
     else:
-        result = await general_agent.run(
-            user_prompt, message_history=history
-        )
+        result = await general_agent.run(user_prompt, message_history=history)
 
     if TESTING_MODE:
         print("\n--- TESTING MODE ---")

@@ -9,14 +9,16 @@ Note, and Session Hooks.  The DM can optionally provide prep notes (e.g.
 generated brief.  The result is persisted on the session record.
 """
 
+import os
+
+from dotenv import load_dotenv
 from fastapi import APIRouter
 from pydantic import BaseModel
 from pydantic_ai import Agent
 from pydantic_ai.models.anthropic import AnthropicModel
 from pydantic_ai.providers.anthropic import AnthropicProvider
-from dotenv import load_dotenv
+
 from supabase_client import supabase as sb
-import os
 
 load_dotenv()
 
@@ -182,8 +184,7 @@ def build_session_prep_context(
     events_res = (
         sb.table("timeline_events")
         .select(
-            "title, description, event_type, importance, "
-            "in_world_date, location_id"
+            "title, description, event_type, importance, in_world_date, location_id"
         )
         .eq("campaign_id", campaign_id)
         .order("sort_order", desc=True)
@@ -230,18 +231,14 @@ def build_session_prep_context(
     # Build lookup dicts for FK resolution
     # ------------------------------------------------------------------
 
-    all_characters = {
-        ch["id"]: ch for ch in (npcs_res.data or [])
-    }
+    all_characters = {ch["id"]: ch for ch in (npcs_res.data or [])}
     # Also index attending PCs
-    for a in (attendees_res.data or []):
+    for a in attendees_res.data or []:
         ch = a.get("characters")
         if ch:
             all_characters[ch["id"]] = ch
 
-    location_map = {
-        loc["id"]: loc for loc in (locations_res.data or [])
-    }
+    location_map = {loc["id"]: loc for loc in (locations_res.data or [])}
 
     def char_name(cid):
         ch = all_characters.get(cid)
@@ -289,9 +286,7 @@ def build_session_prep_context(
 
     # Upcoming session info
     lines.append("=== UPCOMING SESSION ===")
-    lines.append(
-        f"Session {s['session_number']}: {s.get('title') or 'Untitled'}"
-    )
+    lines.append(f"Session {s['session_number']}: {s.get('title') or 'Untitled'}")
     lines.append(f"Status: {s['status']}")
     if s.get("dm_notes"):
         lines.append(f"DM Notes: {s['dm_notes']}")
@@ -329,9 +324,7 @@ def build_session_prep_context(
     if prev_sessions:
         for ps in prev_sessions:
             title = ps.get("title") or "Untitled"
-            lines.append(
-                f"\n--- Session {ps['session_number']}: {title} ---"
-            )
+            lines.append(f"\n--- Session {ps['session_number']}: {title} ---")
             if ps.get("summary"):
                 lines.append(f"Summary: {ps['summary']}")
             if ps.get("dm_notes"):
@@ -344,10 +337,7 @@ def build_session_prep_context(
                     dates += f" to {ps['in_world_end_date']}"
                 lines.append(f"In-world: {dates}")
             # Contributed notes for this session
-            session_notes = [
-                n for n in notes
-                if n.get("related_entity_id") == ps["id"]
-            ]
+            session_notes = [n for n in notes if n.get("related_entity_id") == ps["id"]]
             if session_notes:
                 lines.append("Contributed notes:")
                 for n in session_notes:
@@ -434,9 +424,7 @@ def build_session_prep_context(
             if loc.get("parent_location_id"):
                 parent = f" (in {loc_name(loc['parent_location_id'])})"
             desc = loc.get("description") or "No description"
-            lines.append(
-                f"- {loc['name']} ({loc['type']}){parent}: {desc}"
-            )
+            lines.append(f"- {loc['name']} ({loc['type']}){parent}: {desc}")
     else:
         lines.append("No locations recorded yet.")
     lines.append("")
@@ -453,13 +441,9 @@ def build_session_prep_context(
             if f.get("goals"):
                 lines.append(f"  Goals: {f['goals']}")
             if f.get("leader_character_id"):
-                lines.append(
-                    f"  Leader: {char_name(f['leader_character_id'])}"
-                )
+                lines.append(f"  Leader: {char_name(f['leader_character_id'])}")
             if f.get("headquarters_location_id"):
-                lines.append(
-                    f"  HQ: {loc_name(f['headquarters_location_id'])}"
-                )
+                lines.append(f"  HQ: {loc_name(f['headquarters_location_id'])}")
     else:
         lines.append("No active factions recorded yet.")
 
@@ -489,8 +473,8 @@ async def session_prep(body: SessionPrepRequest):
     )
 
     # Persist the brief to the session record
-    sb.table("sessions").update(
-        {"prep_brief": result.output}
-    ).eq("id", body.session_id).execute()
+    sb.table("sessions").update({"prep_brief": result.output}).eq(
+        "id", body.session_id
+    ).execute()
 
     return {"prep": result.output}

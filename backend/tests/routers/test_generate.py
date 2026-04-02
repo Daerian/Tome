@@ -6,18 +6,19 @@ Covers:
 - POST /api/generate : integration tests using mocked agents
 """
 
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
-from httpx import AsyncClient, ASGITransport
-from pydantic_ai.messages import ModelRequest, ModelResponse, UserPromptPart, TextPart
+from httpx import ASGITransport, AsyncClient
+from pydantic_ai.messages import ModelRequest, ModelResponse, TextPart, UserPromptPart
 
 from main import app
-from routers.generate import build_history, Message
-
+from routers.generate import Message, build_history
 
 # ---------------------------------------------------------------------------
 # build_history() unit tests
 # ---------------------------------------------------------------------------
+
 
 class TestBuildHistory:
     """Unit tests for build_history — no network calls required."""
@@ -68,6 +69,7 @@ class TestBuildHistory:
 # POST /api/generate integration tests (agents mocked)
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def mock_agent_result():
     """A fake agent result object mimicking pydantic_ai RunResult."""
@@ -81,10 +83,13 @@ async def test_generate_without_campaign(mock_agent_result):
     """POST /api/generate without campaign_id uses the general agent."""
     with patch("routers.generate.general_agent") as mock_general:
         mock_general.run = AsyncMock(return_value=mock_agent_result)
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-            response = await client.post("/api/generate", json={
-                "messages": [{"role": "user", "content": "Hello"}]
-            })
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            response = await client.post(
+                "/api/generate",
+                json={"messages": [{"role": "user", "content": "Hello"}]},
+            )
 
     assert response.status_code == 200
     assert response.json()["result"] == "This is a mocked Claude response."
@@ -95,13 +100,20 @@ async def test_generate_with_campaign(mock_agent_result):
     """POST /api/generate with campaign_id uses the campaign agent."""
     with patch("routers.generate.campaign_agent") as mock_campaign:
         mock_campaign.run = AsyncMock(return_value=mock_agent_result)
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-            response = await client.post("/api/generate", json={
-                "messages": [{"role": "user", "content": "Who are the characters?"}],
-                "campaign_id": "test-campaign-id",
-                "user_id": "test-user-id",
-                "role": "dm",
-            })
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            response = await client.post(
+                "/api/generate",
+                json={
+                    "messages": [
+                        {"role": "user", "content": "Who are the characters?"}
+                    ],
+                    "campaign_id": "test-campaign-id",
+                    "user_id": "test-user-id",
+                    "role": "dm",
+                },
+            )
 
     assert response.status_code == 200
     assert response.json()["result"] == "This is a mocked Claude response."
@@ -117,14 +129,19 @@ async def test_generate_passes_history(mock_agent_result):
     """Agent receives the correct history excluding the last user message."""
     with patch("routers.generate.general_agent") as mock_general:
         mock_general.run = AsyncMock(return_value=mock_agent_result)
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-            await client.post("/api/generate", json={
-                "messages": [
-                    {"role": "user", "content": "First message"},
-                    {"role": "assistant", "content": "First reply"},
-                    {"role": "user", "content": "Second message"},
-                ]
-            })
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            await client.post(
+                "/api/generate",
+                json={
+                    "messages": [
+                        {"role": "user", "content": "First message"},
+                        {"role": "assistant", "content": "First reply"},
+                        {"role": "user", "content": "Second message"},
+                    ]
+                },
+            )
 
     call_args = mock_general.run.call_args
     assert call_args.args[0] == "Second message"
@@ -137,10 +154,13 @@ async def test_generate_testing_mode_flag(mock_agent_result):
     with patch("routers.generate.general_agent") as mock_general:
         mock_general.run = AsyncMock(return_value=mock_agent_result)
         with patch("routers.generate.TESTING_MODE", True):
-            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-                response = await client.post("/api/generate", json={
-                    "messages": [{"role": "user", "content": "Test"}]
-                })
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                response = await client.post(
+                    "/api/generate",
+                    json={"messages": [{"role": "user", "content": "Test"}]},
+                )
 
     assert response.json().get("testing") is True
 
@@ -148,7 +168,9 @@ async def test_generate_testing_mode_flag(mock_agent_result):
 @pytest.mark.asyncio
 async def test_generate_invalid_body_returns_422():
     """A malformed request body returns HTTP 422."""
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         response = await client.post("/api/generate", json={"wrong_field": "data"})
 
     assert response.status_code == 422
@@ -159,11 +181,16 @@ async def test_generate_defaults_role_to_spectator(mock_agent_result):
     """When role is omitted, defaults to 'spectator'."""
     with patch("routers.generate.campaign_agent") as mock_campaign:
         mock_campaign.run = AsyncMock(return_value=mock_agent_result)
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-            await client.post("/api/generate", json={
-                "messages": [{"role": "user", "content": "Hello"}],
-                "campaign_id": "test-campaign-id",
-            })
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            await client.post(
+                "/api/generate",
+                json={
+                    "messages": [{"role": "user", "content": "Hello"}],
+                    "campaign_id": "test-campaign-id",
+                },
+            )
 
     call_kwargs = mock_campaign.run.call_args.kwargs
     assert call_kwargs["deps"].role == "spectator"
@@ -173,7 +200,9 @@ async def test_generate_defaults_role_to_spectator(mock_agent_result):
 @pytest.mark.asyncio
 async def test_health_endpoint():
     """GET /health returns status ok."""
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         response = await client.get("/health")
 
     assert response.status_code == 200

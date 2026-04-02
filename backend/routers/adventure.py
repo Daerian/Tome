@@ -6,7 +6,8 @@ display table-of-contents and section content without going through the LLM.
 """
 
 from fastapi import APIRouter, Query
-from tools.fivetools_tools import ADVENTURE_MAP, _fetch_file, _clean_entry
+
+from tools.fivetools_tools import ADVENTURE_MAP, _clean_entry, _fetch_file
 
 router = APIRouter()
 
@@ -27,11 +28,13 @@ async def adventure_toc(code: str):
 
     sections = []
     for i, s in enumerate(entities):
-        sections.append({
-            "index": i,
-            "name": s.get("name", f"Section {i + 1}"),
-            "page": s.get("page", None),
-        })
+        sections.append(
+            {
+                "index": i,
+                "name": s.get("name", f"Section {i + 1}"),
+                "page": s.get("page", None),
+            }
+        )
 
     return {"name": adv_name, "code": code_lower, "sections": sections}
 

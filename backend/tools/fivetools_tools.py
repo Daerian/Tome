@@ -17,8 +17,7 @@ import httpx
 # ---------------------------------------------------------------------------
 
 FIVETOOLS_RAW = (
-    "https://raw.githubusercontent.com/"
-    "5etools-mirror-3/5etools-src/main/data"
+    "https://raw.githubusercontent.com/5etools-mirror-3/5etools-src/main/data"
 )
 TIMEOUT = 15.0
 
@@ -115,11 +114,20 @@ ADVENTURE_MAP = {
     "wdh": ("Waterdeep: Dragon Heist", "adventure/adventure-wdh.json"),
     "wdmm": ("Waterdeep: Dungeon of the Mad Mage", "adventure/adventure-wdmm.json"),
     "gos": ("Ghosts of Saltmarsh", "adventure/adventure-gos.json"),
-    "idrotf": ("Icewind Dale: Rime of the Frostmaiden", "adventure/adventure-idrotf.json"),
+    "idrotf": (
+        "Icewind Dale: Rime of the Frostmaiden",
+        "adventure/adventure-idrotf.json",
+    ),
     "cm": ("Candlekeep Mysteries", "adventure/adventure-cm.json"),
     "wbtw": ("The Wild Beyond the Witchlight", "adventure/adventure-wbtw.json"),
-    "dsotdq": ("Dragonlance: Shadow of the Dragon Queen", "adventure/adventure-dsotdq.json"),
-    "pabtso": ("Phandelver and Below: The Shattered Obelisk", "adventure/adventure-pabtso.json"),
+    "dsotdq": (
+        "Dragonlance: Shadow of the Dragon Queen",
+        "adventure/adventure-dsotdq.json",
+    ),
+    "pabtso": (
+        "Phandelver and Below: The Shattered Obelisk",
+        "adventure/adventure-pabtso.json",
+    ),
     "dip": ("Dragon of Icespire Peak", "adventure/adventure-dip.json"),
 }
 
@@ -181,8 +189,10 @@ _TAG_RE = re.compile(r"\{@\w+\s+([^}]*)}")
 
 def _strip_tags(text: str) -> str:
     """Strip 5etools {@tag content|extra} markup, keeping the display text."""
+
     def _replace(m: re.Match) -> str:
         return m.group(1).split("|")[0]
+
     return _TAG_RE.sub(_replace, text)
 
 
@@ -227,7 +237,7 @@ def _clean_entry(entry) -> str:
         if entry_type == "quote":
             text = _clean_entry(entry.get("entries", []))
             by = entry.get("by", "")
-            return f'> {text}\n> — {by}' if by else f"> {text}"
+            return f"> {text}\n> — {by}" if by else f"> {text}"
 
         # Fallback: try entries, then stringify
         if "entries" in entry:
@@ -245,7 +255,9 @@ def _clean_entry(entry) -> str:
 def _format_monster(m: dict) -> str:
     """Format a 5etools monster entry into a readable stat block."""
     lines = [f"### {m['name']}"]
-    lines.append(f"*Source: {SOURCE_MAP.get(m.get('source', ''), m.get('source', '?'))}*")
+    lines.append(
+        f"*Source: {SOURCE_MAP.get(m.get('source', ''), m.get('source', '?'))}*"
+    )
 
     # Size / type / alignment
     size = ", ".join(m.get("size", []))
@@ -262,8 +274,11 @@ def _format_monster(m: dict) -> str:
         if isinstance(a, int):
             ac_parts.append(str(a))
         elif isinstance(a, dict):
-            ac_parts.append(f"{a.get('ac', '?')} ({_strip_tags(', '.join(a.get('from', [])))})"
-                            if a.get("from") else str(a.get("ac", "?")))
+            ac_parts.append(
+                f"{a.get('ac', '?')} ({_strip_tags(', '.join(a.get('from', [])))})"
+                if a.get("from")
+                else str(a.get("ac", "?"))
+            )
     lines.append(f"AC: {', '.join(ac_parts) or '?'}")
 
     # HP
@@ -275,8 +290,10 @@ def _format_monster(m: dict) -> str:
     speed = m.get("speed", {})
     speed_parts = []
     if isinstance(speed, dict):
-        speed_parts = [f"{k} {v} ft." if isinstance(v, int) else f"{k} {v}"
-                       for k, v in speed.items()]
+        speed_parts = [
+            f"{k} {v} ft." if isinstance(v, int) else f"{k} {v}"
+            for k, v in speed.items()
+        ]
         lines.append(f"Speed: {', '.join(speed_parts)}")
 
     # Ability scores
@@ -314,19 +331,25 @@ def _format_monster(m: dict) -> str:
     if m.get("action"):
         lines.append("\n**Actions:**")
         for action in m["action"]:
-            lines.append(f"**{action['name']}**: {_clean_entry(action.get('entries', []))}")
+            lines.append(
+                f"**{action['name']}**: {_clean_entry(action.get('entries', []))}"
+            )
 
     # Reactions
     for reaction in m.get("reaction", []):
-        lines.append(f"\n**Reaction — {reaction['name']}**: "
-                     f"{_clean_entry(reaction.get('entries', []))}")
+        lines.append(
+            f"\n**Reaction — {reaction['name']}**: "
+            f"{_clean_entry(reaction.get('entries', []))}"
+        )
 
     # Legendary actions
     if m.get("legendary"):
         lines.append("\n**Legendary Actions:**")
         for la in m["legendary"]:
-            lines.append(f"- **{la.get('name', 'Action')}**: "
-                         f"{_clean_entry(la.get('entries', []))}")
+            lines.append(
+                f"- **{la.get('name', 'Action')}**: "
+                f"{_clean_entry(la.get('entries', []))}"
+            )
 
     text = "\n".join(lines)
 
@@ -370,7 +393,10 @@ def _format_monster(m: dict) -> str:
             for r in m.get("reaction", [])
         ],
         "legendary": [
-            {"name": la.get("name", "Action"), "text": _clean_entry(la.get("entries", []))}
+            {
+                "name": la.get("name", "Action"),
+                "text": _clean_entry(la.get("entries", [])),
+            }
             for la in m.get("legendary", [])
         ],
     }
@@ -386,8 +412,10 @@ def _format_spell(s: dict) -> str:
     level_str = "Cantrip" if level == 0 else f"Level {level}"
 
     lines = [f"### {s['name']}"]
-    lines.append(f"*{level_str} {school} — Source: "
-                 f"{SOURCE_MAP.get(s.get('source', ''), s.get('source', '?'))}*")
+    lines.append(
+        f"*{level_str} {school} — Source: "
+        f"{SOURCE_MAP.get(s.get('source', ''), s.get('source', '?'))}*"
+    )
 
     # Casting time
     times = s.get("time", [])
@@ -563,7 +591,9 @@ async def lookup_5etools_item(name: str) -> str:
     lines = []
     for item in matches:
         lines.append(f"### {item['name']}")
-        lines.append(f"*Source: {SOURCE_MAP.get(item.get('source', ''), item.get('source', '?'))}*")
+        lines.append(
+            f"*Source: {SOURCE_MAP.get(item.get('source', ''), item.get('source', '?'))}*"
+        )
         if item.get("type"):
             lines.append(f"Type: {item['type']}")
         if item.get("rarity") and item["rarity"] != "none":
@@ -607,7 +637,9 @@ async def lookup_5etools_feat(name: str) -> str:
     lines = []
     for feat in matches:
         lines.append(f"### {feat['name']}")
-        lines.append(f"*Source: {SOURCE_MAP.get(feat.get('source', ''), feat.get('source', '?'))}*")
+        lines.append(
+            f"*Source: {SOURCE_MAP.get(feat.get('source', ''), feat.get('source', '?'))}*"
+        )
 
         # Prerequisites
         prereqs = feat.get("prerequisite", [])
@@ -678,13 +710,17 @@ async def browse_5etools_adventure(adventure: str, section: str = "") -> str:
 
     if not match:
         names = [s.get("name", "?") for s in entities]
-        return (f"No section matching '{section}' in {adv_name}. "
-                f"Available sections: {', '.join(names)}")
+        return (
+            f"No section matching '{section}' in {adv_name}. "
+            f"Available sections: {', '.join(names)}"
+        )
 
     content = _clean_entry(match)
     # Cap output to prevent massive responses
     if len(content) > 4000:
-        content = content[:4000] + "\n\n... (section truncated — ask about a specific part)"
+        content = (
+            content[:4000] + "\n\n... (section truncated — ask about a specific part)"
+        )
 
     return f"### {adv_name} — {match.get('name', '?')}\n\n{content}"
 
@@ -707,8 +743,9 @@ async def browse_5etools_source(
         path = BESTIARY_FILE_MAP.get(source_lower)
         if not path:
             available = ", ".join(k.upper() for k in BESTIARY_FILE_MAP)
-            return (f"No bestiary file for source '{source_upper}'. "
-                    f"Available: {available}")
+            return (
+                f"No bestiary file for source '{source_upper}'. Available: {available}"
+            )
         entities = await _fetch_file(path, "monster")
         lines = [f"### Monsters from {source_name}\n"]
         for m in entities:
@@ -722,15 +759,16 @@ async def browse_5etools_source(
         if len(lines) > 52:
             total = len(lines) - 1
             lines = lines[:52]
-            lines.append(f"\n*Showing 50 of {total} — use lookup_5etools_monster for full details*")
+            lines.append(
+                f"\n*Showing 50 of {total} — use lookup_5etools_monster for full details*"
+            )
         return "\n".join(lines)
 
     elif content_type == "spell":
         path = SPELL_FILE_MAP.get(source_lower)
         if not path:
             available = ", ".join(k.upper() for k in SPELL_FILE_MAP)
-            return (f"No spell file for source '{source_upper}'. "
-                    f"Available: {available}")
+            return f"No spell file for source '{source_upper}'. Available: {available}"
         entities = await _fetch_file(path, "spell")
         lines = [f"### Spells from {source_name}\n"]
         for s in entities:
@@ -741,7 +779,9 @@ async def browse_5etools_source(
         if len(lines) > 52:
             total = len(lines) - 1
             lines = lines[:52]
-            lines.append(f"\n*Showing 50 of {total} — use lookup_5etools_spell for full details*")
+            lines.append(
+                f"\n*Showing 50 of {total} — use lookup_5etools_spell for full details*"
+            )
         return "\n".join(lines)
 
     elif content_type == "feat":
@@ -767,8 +807,10 @@ async def browse_5etools_source(
         return "\n".join(lines)
 
     else:
-        return (f"Unknown content_type '{content_type}'. "
-                "Use 'monster', 'spell', 'item', or 'feat'.")
+        return (
+            f"Unknown content_type '{content_type}'. "
+            "Use 'monster', 'spell', 'item', or 'feat'."
+        )
 
 
 # ---------------------------------------------------------------------------

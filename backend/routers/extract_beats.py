@@ -6,15 +6,17 @@ then asks Claude to identify the main narrative threads and return them as
 structured story beats the DM can review and save.
 """
 
+import json
+import os
+
+from dotenv import load_dotenv
 from fastapi import APIRouter
 from pydantic import BaseModel
 from pydantic_ai import Agent
 from pydantic_ai.models.anthropic import AnthropicModel
 from pydantic_ai.providers.anthropic import AnthropicProvider
-from dotenv import load_dotenv
+
 from supabase_client import supabase as sb
-import json
-import os
 
 load_dotenv()
 
@@ -127,7 +129,9 @@ def build_extraction_context(campaign_id: str) -> str | None:
     lines.append("=== SESSION HISTORY ===")
     if sessions:
         for s in sessions:
-            lines.append(f"\n--- Session {s['session_number']}: {s.get('title') or 'Untitled'} ---")
+            lines.append(
+                f"\n--- Session {s['session_number']}: {s.get('title') or 'Untitled'} ---"
+            )
             if s.get("summary"):
                 lines.append(f"Summary: {s['summary']}")
             if s.get("dm_notes"):
@@ -165,7 +169,9 @@ def build_extraction_context(campaign_id: str) -> str | None:
     if beats:
         lines.append("=== EXISTING STORY BEATS (do NOT duplicate these) ===")
         for b in beats:
-            lines.append(f"- [{b['type']}, {b['status']}] {b['title']}: {b.get('description', '')}")
+            lines.append(
+                f"- [{b['type']}, {b['status']}] {b['title']}: {b.get('description', '')}"
+            )
         lines.append("")
 
     return "\n".join(lines)

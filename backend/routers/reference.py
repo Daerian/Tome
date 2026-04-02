@@ -6,25 +6,27 @@ official SRD content (monsters, spells, items, conditions, classes, races,
 and general rules).
 """
 
+import os
+
+from dotenv import load_dotenv
 from fastapi import APIRouter
 from pydantic import BaseModel
 from pydantic_ai import Agent
 from pydantic_ai.messages import (
     ModelRequest,
     ModelResponse,
-    UserPromptPart,
     TextPart,
+    UserPromptPart,
 )
 from pydantic_ai.models.anthropic import AnthropicModel
 from pydantic_ai.providers.anthropic import AnthropicProvider
-from dotenv import load_dotenv
-from tools.reference_tools import ALL_REFERENCE_TOOLS, lookup_monster
+
 from tools.fivetools_tools import (
     ALL_5ETOOLS_TOOLS,
-    lookup_5etools_monster,
     browse_5etools_source,
+    lookup_5etools_monster,
 )
-import os
+from tools.reference_tools import ALL_REFERENCE_TOOLS, lookup_monster
 
 load_dotenv()
 
@@ -43,7 +45,8 @@ DM_TOOLS = ALL_REFERENCE_TOOLS + ALL_5ETOOLS_TOOLS
 
 # Players get everything except monster stat lookups
 PLAYER_TOOLS = [t for t in ALL_REFERENCE_TOOLS if t is not lookup_monster] + [
-    t for t in ALL_5ETOOLS_TOOLS
+    t
+    for t in ALL_5ETOOLS_TOOLS
     if t not in (lookup_5etools_monster, browse_5etools_source)
 ]
 
@@ -128,13 +131,9 @@ def build_history(messages: list[Message]) -> list:
     history = []
     for msg in messages:
         if msg.role == "user":
-            history.append(
-                ModelRequest(parts=[UserPromptPart(content=msg.content)])
-            )
+            history.append(ModelRequest(parts=[UserPromptPart(content=msg.content)]))
         else:
-            history.append(
-                ModelResponse(parts=[TextPart(content=msg.content)])
-            )
+            history.append(ModelResponse(parts=[TextPart(content=msg.content)]))
     return history
 
 
@@ -168,9 +167,7 @@ async def reference(body: RefRequest):
         )
 
     agent = dm_ref_agent if body.role == "dm" else player_ref_agent
-    result = await agent.run(
-        edition_context + user_prompt, message_history=history
-    )
+    result = await agent.run(edition_context + user_prompt, message_history=history)
 
     if TESTING_MODE:
         print("\n--- REFERENCE MODE ---")

@@ -5,25 +5,26 @@ Each tool is tested with mocked httpx responses. The cache is cleared
 between tests to ensure isolation.
 """
 
-import time
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
+
 from tools.fivetools_tools import (
-    _strip_tags,
-    _clean_entry,
     _cache,
-    lookup_5etools_monster,
-    lookup_5etools_spell,
-    lookup_5etools_item,
-    lookup_5etools_feat,
+    _clean_entry,
+    _strip_tags,
     browse_5etools_adventure,
     browse_5etools_source,
+    lookup_5etools_feat,
+    lookup_5etools_item,
+    lookup_5etools_monster,
+    lookup_5etools_spell,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(autouse=True)
 def clear_cache():
@@ -60,18 +61,29 @@ SAMPLE_MONSTER = {
     "ac": [15],
     "hp": {"average": 7, "formula": "2d6"},
     "speed": {"walk": 30},
-    "str": 8, "dex": 14, "con": 10, "int": 10, "wis": 8, "cha": 8,
+    "str": 8,
+    "dex": 14,
+    "con": 10,
+    "int": 10,
+    "wis": 8,
+    "cha": 8,
     "passive": 9,
     "languages": ["Common", "Goblin"],
     "cr": "1/4",
     "trait": [
-        {"name": "Nimble Escape", "entries": ["The goblin can Disengage or Hide as a bonus action."]}
+        {
+            "name": "Nimble Escape",
+            "entries": ["The goblin can Disengage or Hide as a bonus action."],
+        }
     ],
     "action": [
-        {"name": "Scimitar", "entries": [
-            "{@atk mw} {@hit 4} to hit, reach 5 ft., one target. "
-            "{@h}{@damage 1d6 + 2} slashing damage."
-        ]}
+        {
+            "name": "Scimitar",
+            "entries": [
+                "{@atk mw} {@hit 4} to hit, reach 5 ft., one target. "
+                "{@h}{@damage 1d6 + 2} slashing damage."
+            ],
+        }
     ],
 }
 
@@ -100,6 +112,7 @@ SAMPLE_SPELL = {
 # ---------------------------------------------------------------------------
 # Markup cleaner tests
 # ---------------------------------------------------------------------------
+
 
 class TestStripTags:
     def test_strips_dice_tag(self):
@@ -174,6 +187,7 @@ class TestCleanEntry:
 # Monster lookup tests
 # ---------------------------------------------------------------------------
 
+
 class TestLookup5etoolsMonster:
     @pytest.mark.asyncio
     async def test_no_results(self):
@@ -202,6 +216,7 @@ class TestLookup5etoolsMonster:
 # Spell lookup tests
 # ---------------------------------------------------------------------------
 
+
 class TestLookup5etoolsSpell:
     @pytest.mark.asyncio
     async def test_no_results(self):
@@ -224,6 +239,7 @@ class TestLookup5etoolsSpell:
 # ---------------------------------------------------------------------------
 # Item lookup tests
 # ---------------------------------------------------------------------------
+
 
 class TestLookup5etoolsItem:
     @pytest.mark.asyncio
@@ -254,6 +270,7 @@ class TestLookup5etoolsItem:
 # Feat lookup tests
 # ---------------------------------------------------------------------------
 
+
 class TestLookup5etoolsFeat:
     @pytest.mark.asyncio
     async def test_no_results(self):
@@ -281,6 +298,7 @@ class TestLookup5etoolsFeat:
 # Adventure browsing tests
 # ---------------------------------------------------------------------------
 
+
 class TestBrowse5etoolsAdventure:
     @pytest.mark.asyncio
     async def test_unknown_adventure(self):
@@ -290,8 +308,20 @@ class TestBrowse5etoolsAdventure:
     @pytest.mark.asyncio
     async def test_lists_sections(self):
         sections = [
-            {"type": "section", "name": "Into the Mists", "page": 1, "id": "001", "entries": []},
-            {"type": "section", "name": "The Village of Barovia", "page": 20, "id": "002", "entries": []},
+            {
+                "type": "section",
+                "name": "Into the Mists",
+                "page": 1,
+                "id": "001",
+                "entries": [],
+            },
+            {
+                "type": "section",
+                "name": "The Village of Barovia",
+                "page": 20,
+                "id": "002",
+                "entries": [],
+            },
         ]
         with _patch_httpx({"data": sections}):
             result = await browse_5etools_adventure("cos")
@@ -318,7 +348,13 @@ class TestBrowse5etoolsAdventure:
     @pytest.mark.asyncio
     async def test_section_not_found(self):
         sections = [
-            {"type": "section", "name": "Chapter 1", "page": 1, "id": "001", "entries": []},
+            {
+                "type": "section",
+                "name": "Chapter 1",
+                "page": 1,
+                "id": "001",
+                "entries": [],
+            },
         ]
         with _patch_httpx({"data": sections}):
             result = await browse_5etools_adventure("cos", section="nonexistent")
@@ -328,6 +364,7 @@ class TestBrowse5etoolsAdventure:
 # ---------------------------------------------------------------------------
 # Source browsing tests
 # ---------------------------------------------------------------------------
+
 
 class TestBrowse5etoolsSource:
     @pytest.mark.asyncio
@@ -368,6 +405,7 @@ class TestBrowse5etoolsSource:
 # ---------------------------------------------------------------------------
 # Cache tests
 # ---------------------------------------------------------------------------
+
 
 class TestCache:
     @pytest.mark.asyncio
