@@ -16,7 +16,6 @@ from httpx import ASGITransport, AsyncClient
 from main import app
 from routers.extract_beats import build_extraction_context
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -67,7 +66,13 @@ NOTE = {"content": "We need holy water.", "type": "player"}
 
 def test_build_context_campaign_not_found():
     sb = _make_sb(
-        {"campaigns": None, "sessions": [], "timeline_events": [], "story_beats": [], "notes": []}
+        {
+            "campaigns": None,
+            "sessions": [],
+            "timeline_events": [],
+            "story_beats": [],
+            "notes": [],
+        }
     )
     with patch("routers.extract_beats.sb", sb):
         result = build_extraction_context("missing-id")
@@ -166,19 +171,29 @@ def test_build_context_includes_notes():
 # ---------------------------------------------------------------------------
 
 
-BEAT_JSON = json.dumps([
-    {
-        "title": "New threat",
-        "description": "A new enemy appeared.",
-        "type": "plot_hook",
-        "status": "planted",
-    }
-])
+BEAT_JSON = json.dumps(
+    [
+        {
+            "title": "New threat",
+            "description": "A new enemy appeared.",
+            "type": "plot_hook",
+            "status": "planted",
+        }
+    ]
+)
 
 
 @pytest.mark.asyncio
 async def test_extract_beats_campaign_not_found():
-    sb = _make_sb({"campaigns": None, "sessions": [], "timeline_events": [], "story_beats": [], "notes": []})
+    sb = _make_sb(
+        {
+            "campaigns": None,
+            "sessions": [],
+            "timeline_events": [],
+            "story_beats": [],
+            "notes": [],
+        }
+    )
     with patch("routers.extract_beats.sb", sb):
         async with AsyncClient(
             transport=ASGITransport(app=app), base_url="http://test"
@@ -198,17 +213,25 @@ async def test_extract_beats_returns_parsed_json():
     mock_result = MagicMock()
     mock_result.output = BEAT_JSON
     sb = _make_sb(
-        {"campaigns": CAMPAIGN, "sessions": [], "timeline_events": [], "story_beats": [], "notes": []}
+        {
+            "campaigns": CAMPAIGN,
+            "sessions": [],
+            "timeline_events": [],
+            "story_beats": [],
+            "notes": [],
+        }
     )
-    with patch("routers.extract_beats.sb", sb):
-        with patch("routers.extract_beats.Agent") as MockAgent:
-            MockAgent.return_value.run = AsyncMock(return_value=mock_result)
-            async with AsyncClient(
-                transport=ASGITransport(app=app), base_url="http://test"
-            ) as client:
-                response = await client.post(
-                    "/api/extract-beats", json={"campaign_id": "c1"}
-                )
+    with (
+        patch("routers.extract_beats.sb", sb),
+        patch("routers.extract_beats.Agent") as mock_agent,
+    ):
+        mock_agent.return_value.run = AsyncMock(return_value=mock_result)
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            response = await client.post(
+                "/api/extract-beats", json={"campaign_id": "c1"}
+            )
 
     body = response.json()
     assert len(body["beats"]) == 1
@@ -220,17 +243,25 @@ async def test_extract_beats_strips_markdown_fences():
     mock_result = MagicMock()
     mock_result.output = f"```json\n{BEAT_JSON}\n```"
     sb = _make_sb(
-        {"campaigns": CAMPAIGN, "sessions": [], "timeline_events": [], "story_beats": [], "notes": []}
+        {
+            "campaigns": CAMPAIGN,
+            "sessions": [],
+            "timeline_events": [],
+            "story_beats": [],
+            "notes": [],
+        }
     )
-    with patch("routers.extract_beats.sb", sb):
-        with patch("routers.extract_beats.Agent") as MockAgent:
-            MockAgent.return_value.run = AsyncMock(return_value=mock_result)
-            async with AsyncClient(
-                transport=ASGITransport(app=app), base_url="http://test"
-            ) as client:
-                response = await client.post(
-                    "/api/extract-beats", json={"campaign_id": "c1"}
-                )
+    with (
+        patch("routers.extract_beats.sb", sb),
+        patch("routers.extract_beats.Agent") as mock_agent,
+    ):
+        mock_agent.return_value.run = AsyncMock(return_value=mock_result)
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            response = await client.post(
+                "/api/extract-beats", json={"campaign_id": "c1"}
+            )
 
     assert len(response.json()["beats"]) == 1
 
@@ -240,17 +271,25 @@ async def test_extract_beats_invalid_json_returns_empty():
     mock_result = MagicMock()
     mock_result.output = "Sorry, I cannot provide that."
     sb = _make_sb(
-        {"campaigns": CAMPAIGN, "sessions": [], "timeline_events": [], "story_beats": [], "notes": []}
+        {
+            "campaigns": CAMPAIGN,
+            "sessions": [],
+            "timeline_events": [],
+            "story_beats": [],
+            "notes": [],
+        }
     )
-    with patch("routers.extract_beats.sb", sb):
-        with patch("routers.extract_beats.Agent") as MockAgent:
-            MockAgent.return_value.run = AsyncMock(return_value=mock_result)
-            async with AsyncClient(
-                transport=ASGITransport(app=app), base_url="http://test"
-            ) as client:
-                response = await client.post(
-                    "/api/extract-beats", json={"campaign_id": "c1"}
-                )
+    with (
+        patch("routers.extract_beats.sb", sb),
+        patch("routers.extract_beats.Agent") as mock_agent,
+    ):
+        mock_agent.return_value.run = AsyncMock(return_value=mock_result)
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            response = await client.post(
+                "/api/extract-beats", json={"campaign_id": "c1"}
+            )
 
     assert response.json()["beats"] == []
 

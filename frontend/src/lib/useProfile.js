@@ -7,6 +7,7 @@ export function useProfile(session) {
 
   useEffect(() => {
     if (!session) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional sync reset when session is cleared
       setProfile(null);
       setLoading(false);
       return;

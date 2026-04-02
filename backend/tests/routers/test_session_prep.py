@@ -15,7 +15,6 @@ from httpx import ASGITransport, AsyncClient
 from main import app
 from routers.session_prep import build_session_prep_context
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -34,7 +33,16 @@ def _make_sb(table_data: dict) -> MagicMock:
 
     def _table(name):
         chain = MagicMock()
-        for method in ("select", "eq", "neq", "order", "limit", "single", "in_", "update"):
+        for method in (
+            "select",
+            "eq",
+            "neq",
+            "order",
+            "limit",
+            "single",
+            "in_",
+            "update",
+        ):
             getattr(chain, method).return_value = chain
 
         values = table_data.get(name)
@@ -56,7 +64,11 @@ def _make_sb(table_data: dict) -> MagicMock:
 # Fixtures
 # ---------------------------------------------------------------------------
 
-CAMPAIGN = {"name": "Shattered Realms", "description": "A world torn apart.", "system": "D&D 5e"}
+CAMPAIGN = {
+    "name": "Shattered Realms",
+    "description": "A world torn apart.",
+    "system": "D&D 5e",
+}
 SESSION = {
     "session_number": 5,
     "title": "The Siege",
@@ -184,7 +196,9 @@ def test_build_context_includes_campaign_header():
 def test_build_context_includes_dm_prep_notes():
     sb = _full_sb()
     with patch("routers.session_prep.sb", sb):
-        result = build_session_prep_context("s1", "c1", dm_prep_notes="Move to the Underdark.")
+        result = build_session_prep_context(
+            "s1", "c1", dm_prep_notes="Move to the Underdark."
+        )
 
     assert "DM'S PLANS FOR THIS SESSION" in result
     assert "Move to the Underdark." in result
@@ -287,16 +301,18 @@ async def test_session_prep_calls_agent_and_returns_brief():
     mock_result.output = "## Story So Far\nThe party fought bravely..."
     sb = _full_sb()
 
-    with patch("routers.session_prep.sb", sb):
-        with patch("routers.session_prep.Agent") as MockAgent:
-            MockAgent.return_value.run = AsyncMock(return_value=mock_result)
-            async with AsyncClient(
-                transport=ASGITransport(app=app), base_url="http://test"
-            ) as client:
-                response = await client.post(
-                    "/api/session-prep",
-                    json={"session_id": "s1", "campaign_id": "c1"},
-                )
+    with (
+        patch("routers.session_prep.sb", sb),
+        patch("routers.session_prep.Agent") as mock_agent,
+    ):
+        mock_agent.return_value.run = AsyncMock(return_value=mock_result)
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            response = await client.post(
+                "/api/session-prep",
+                json={"session_id": "s1", "campaign_id": "c1"},
+            )
 
     assert response.status_code == 200
     assert response.json()["prep"] == "## Story So Far\nThe party fought bravely..."
@@ -309,16 +325,18 @@ async def test_session_prep_persists_brief():
     mock_result.output = "## Story So Far\nBrief content."
     sb = _full_sb()
 
-    with patch("routers.session_prep.sb", sb):
-        with patch("routers.session_prep.Agent") as MockAgent:
-            MockAgent.return_value.run = AsyncMock(return_value=mock_result)
-            async with AsyncClient(
-                transport=ASGITransport(app=app), base_url="http://test"
-            ) as client:
-                await client.post(
-                    "/api/session-prep",
-                    json={"session_id": "s1", "campaign_id": "c1"},
-                )
+    with (
+        patch("routers.session_prep.sb", sb),
+        patch("routers.session_prep.Agent") as mock_agent,
+    ):
+        mock_agent.return_value.run = AsyncMock(return_value=mock_result)
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            await client.post(
+                "/api/session-prep",
+                json={"session_id": "s1", "campaign_id": "c1"},
+            )
 
     # Verify sb.table("sessions").update(...).eq(...).execute() was called
     sb.table.assert_any_call("sessions")
@@ -330,22 +348,24 @@ async def test_session_prep_passes_dm_notes_in_context():
     mock_result.output = "Brief."
     sb = _full_sb()
 
-    with patch("routers.session_prep.sb", sb):
-        with patch("routers.session_prep.Agent") as MockAgent:
-            MockAgent.return_value.run = AsyncMock(return_value=mock_result)
-            async with AsyncClient(
-                transport=ASGITransport(app=app), base_url="http://test"
-            ) as client:
-                await client.post(
-                    "/api/session-prep",
-                    json={
-                        "session_id": "s1",
-                        "campaign_id": "c1",
-                        "dm_prep_notes": "Focus on the boss fight.",
-                    },
-                )
+    with (
+        patch("routers.session_prep.sb", sb),
+        patch("routers.session_prep.Agent") as mock_agent,
+    ):
+        mock_agent.return_value.run = AsyncMock(return_value=mock_result)
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            await client.post(
+                "/api/session-prep",
+                json={
+                    "session_id": "s1",
+                    "campaign_id": "c1",
+                    "dm_prep_notes": "Focus on the boss fight.",
+                },
+            )
 
-    prompt = MockAgent.return_value.run.call_args.args[0]
+    prompt = mock_agent.return_value.run.call_args.args[0]
     assert "Focus on the boss fight." in prompt
 
 

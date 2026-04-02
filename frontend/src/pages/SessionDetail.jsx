@@ -75,6 +75,7 @@ export default function SessionDetail({
 
   useEffect(() => {
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId]);
 
   function toggleSection(key) {

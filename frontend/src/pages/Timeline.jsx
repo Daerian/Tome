@@ -54,10 +54,6 @@ export default function Timeline({ campaignId, role }) {
   const [extractedBeats, setExtractedBeats] = useState([]);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    fetchData();
-  }, [campaignId]);
-
   async function fetchData() {
     const [eventsRes, beatsRes] = await Promise.all([
       supabase
@@ -77,6 +73,11 @@ export default function Timeline({ campaignId, role }) {
     if (beatsRes.data) setBeats(beatsRes.data);
     setLoading(false);
   }
+
+  useEffect(() => {
+    fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [campaignId]);
 
   async function addEvent(e) {
     e.preventDefault();

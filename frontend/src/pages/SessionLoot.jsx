@@ -26,10 +26,6 @@ export default function SessionLoot({ campaignId, session, role }) {
   });
   const [adding, setAdding] = useState(false);
 
-  useEffect(() => {
-    fetchAll();
-  }, [campaignId]);
-
   async function fetchAll() {
     const [lRes, sRes] = await Promise.all([
       supabase
@@ -47,6 +43,11 @@ export default function SessionLoot({ campaignId, session, role }) {
     if (sRes.data) setSessions(sRes.data);
     setLoading(false);
   }
+
+  useEffect(() => {
+    fetchAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [campaignId]);
 
   async function addLoot() {
     if (!form.name.trim() || !form.session_id) return;

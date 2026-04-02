@@ -35,10 +35,6 @@ export default function Treasury({ campaignId, session, role }) {
   const [sessions, setSessions] = useState([]);
   const [creating, setCreating] = useState(false);
 
-  useEffect(() => {
-    fetchAll();
-  }, [campaignId]);
-
   async function fetchAll() {
     const [iRes, cRes, sRes] = await Promise.all([
       supabase
@@ -62,6 +58,11 @@ export default function Treasury({ campaignId, session, role }) {
     if (sRes.data) setSessions(sRes.data);
     setLoading(false);
   }
+
+  useEffect(() => {
+    fetchAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [campaignId]);
 
   async function createItem() {
     if (!form.name.trim()) return;

@@ -53,7 +53,7 @@ export default function Reference({ system, role }) {
         ...updatedMessages,
         { role: 'assistant', content: data.result },
       ]);
-    } catch (err) {
+    } catch {
       setMessages([
         ...updatedMessages,
         { role: 'assistant', content: 'Error: could not reach the server.' },

@@ -10,7 +10,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 
-export default function Locations({ campaignId, session, role }) {
+export default function Locations({ campaignId, role }) {
   const [locations, setLocations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -30,10 +30,6 @@ export default function Locations({ campaignId, session, role }) {
   const [relationships, setRelationships] = useState([]);
   const [creating, setCreating] = useState(false);
 
-  useEffect(() => {
-    fetchLocations();
-  }, [campaignId]);
-
   async function fetchLocations() {
     const { data } = await supabase
       .from('locations')
@@ -43,6 +39,11 @@ export default function Locations({ campaignId, session, role }) {
     if (data) setLocations(data);
     setLoading(false);
   }
+
+  useEffect(() => {
+    fetchLocations();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [campaignId]);
 
   async function createLocation() {
     if (!form.name.trim()) return;

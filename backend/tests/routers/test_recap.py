@@ -16,7 +16,6 @@ from httpx import ASGITransport, AsyncClient
 
 from main import app
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -125,17 +124,16 @@ async def test_recap_calls_agent_with_player_notes():
     sb = _make_sb(
         {"campaigns": CAMPAIGN, "sessions": (SESSION_WITH_NOTES, []), "notes": []}
     )
-    with patch("routers.recap.sb", sb):
-        with patch("routers.recap.Agent") as MockAgent:
-            instance = MockAgent.return_value
-            instance.run = AsyncMock(return_value=mock_result)
-            async with AsyncClient(
-                transport=ASGITransport(app=app), base_url="http://test"
-            ) as client:
-                response = await client.post(
-                    "/api/recap",
-                    json={"session_id": "s1", "campaign_id": "c1"},
-                )
+    with patch("routers.recap.sb", sb), patch("routers.recap.Agent") as mock_agent:
+        instance = mock_agent.return_value
+        instance.run = AsyncMock(return_value=mock_result)
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            response = await client.post(
+                "/api/recap",
+                json={"session_id": "s1", "campaign_id": "c1"},
+            )
 
     assert response.status_code == 200
     assert response.json()["recap"] == "The party bravely descended..."
@@ -146,20 +144,17 @@ async def test_recap_calls_agent_with_player_notes():
 async def test_recap_calls_agent_with_contributed_notes():
     mock_result = MagicMock()
     mock_result.output = "Alice's character solved the puzzle..."
-    sb = _make_sb(
-        {"campaigns": CAMPAIGN, "sessions": (SESSION, []), "notes": NOTE}
-    )
-    with patch("routers.recap.sb", sb):
-        with patch("routers.recap.Agent") as MockAgent:
-            instance = MockAgent.return_value
-            instance.run = AsyncMock(return_value=mock_result)
-            async with AsyncClient(
-                transport=ASGITransport(app=app), base_url="http://test"
-            ) as client:
-                response = await client.post(
-                    "/api/recap",
-                    json={"session_id": "s1", "campaign_id": "c1"},
-                )
+    sb = _make_sb({"campaigns": CAMPAIGN, "sessions": (SESSION, []), "notes": NOTE})
+    with patch("routers.recap.sb", sb), patch("routers.recap.Agent") as mock_agent:
+        instance = mock_agent.return_value
+        instance.run = AsyncMock(return_value=mock_result)
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            response = await client.post(
+                "/api/recap",
+                json={"session_id": "s1", "campaign_id": "c1"},
+            )
 
     assert response.status_code == 200
     assert response.json()["recap"] == "Alice's character solved the puzzle..."
@@ -180,17 +175,16 @@ async def test_recap_includes_previous_session_summary():
             "notes": [],
         }
     )
-    with patch("routers.recap.sb", sb):
-        with patch("routers.recap.Agent") as MockAgent:
-            instance = MockAgent.return_value
-            instance.run = AsyncMock(return_value=mock_result)
-            async with AsyncClient(
-                transport=ASGITransport(app=app), base_url="http://test"
-            ) as client:
-                await client.post(
-                    "/api/recap",
-                    json={"session_id": "s1", "campaign_id": "c1"},
-                )
+    with patch("routers.recap.sb", sb), patch("routers.recap.Agent") as mock_agent:
+        instance = mock_agent.return_value
+        instance.run = AsyncMock(return_value=mock_result)
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            await client.post(
+                "/api/recap",
+                json={"session_id": "s1", "campaign_id": "c1"},
+            )
 
     prompt = instance.run.call_args.args[0]
     assert "The party rested." in prompt

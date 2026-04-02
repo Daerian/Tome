@@ -10,7 +10,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 
-export default function NPCs({ campaignId, session, role }) {
+export default function NPCs({ campaignId, role }) {
   const [characters, setCharacters] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -31,10 +31,6 @@ export default function NPCs({ campaignId, session, role }) {
   const [relationships, setRelationships] = useState([]);
   const [creating, setCreating] = useState(false);
 
-  useEffect(() => {
-    fetchCharacters();
-  }, [campaignId]);
-
   async function fetchCharacters() {
     const { data } = await supabase
       .from('characters')
@@ -44,6 +40,11 @@ export default function NPCs({ campaignId, session, role }) {
     if (data) setCharacters(data);
     setLoading(false);
   }
+
+  useEffect(() => {
+    fetchCharacters();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [campaignId]);
 
   async function createCharacter() {
     if (!form.name.trim()) return;

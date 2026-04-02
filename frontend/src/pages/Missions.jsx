@@ -35,10 +35,6 @@ export default function Missions({ campaignId, session, role }) {
   });
   const [creating, setCreating] = useState(false);
 
-  useEffect(() => {
-    fetchAll();
-  }, [campaignId]);
-
   async function fetchAll() {
     const [mRes, pRes, cRes, sRes] = await Promise.all([
       supabase
@@ -73,6 +69,11 @@ export default function Missions({ campaignId, session, role }) {
     if (sRes.data) setSessions(sRes.data);
     setLoading(false);
   }
+
+  useEffect(() => {
+    fetchAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [campaignId]);
 
   async function createMission() {
     if (!form.title.trim()) return;
@@ -451,9 +452,7 @@ function MissionDetail({
   mission,
   progress: prog,
   characters,
-  sessions,
   role,
-  session,
   onBack,
   onUpdate,
   onDelete,
@@ -465,10 +464,6 @@ function MissionDetail({
   const [editForm, setEditForm] = useState({});
   const [showAddStage, setShowAddStage] = useState(false);
   const [stageForm, setStageForm] = useState({ title: '', description: '' });
-
-  useEffect(() => {
-    fetchStages();
-  }, [mission.id]);
 
   async function fetchStages() {
     const { data } = await supabase
@@ -497,6 +492,11 @@ function MissionDetail({
       }
     }
   }
+
+  useEffect(() => {
+    fetchStages();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mission.id]);
 
   async function addStage() {
     if (!stageForm.title.trim()) return;

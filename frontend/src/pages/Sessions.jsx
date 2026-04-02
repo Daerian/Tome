@@ -23,10 +23,6 @@ export default function Sessions({ campaignId, session, role }) {
   const [prepNotes, setPrepNotes] = useState('');
   const [creating, setCreating] = useState(false);
 
-  useEffect(() => {
-    fetchSessions();
-  }, [campaignId]);
-
   async function fetchSessions() {
     const { data } = await supabase
       .from('sessions')
@@ -37,6 +33,11 @@ export default function Sessions({ campaignId, session, role }) {
     if (data) setSessions(data);
     setLoading(false);
   }
+
+  useEffect(() => {
+    fetchSessions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [campaignId]);
 
   async function createSession() {
     if (!newTitle.trim()) return;
