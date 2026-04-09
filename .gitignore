@@ -29,6 +29,7 @@ backend/venv/
 
 # Claude Code
 .claude/
+agents.md
 
 # Editor directories and files
 .DS_Store
