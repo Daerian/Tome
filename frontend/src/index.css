@@ -48,6 +48,17 @@
   #social .button-icon {
     filter: invert(1) brightness(2);
   }
+
+  select {
+    background-color: #1e2130 !important;
+    color: #e2e8f0 !important;
+    border-color: #3e4257 !important;
+  }
+
+  select option {
+    background-color: #1e2130;
+    color: #e2e8f0;
+  }
 }
 
 body {
