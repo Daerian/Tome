@@ -4,7 +4,15 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from routers import adventure, extract_beats, generate, recap, reference, session_prep
+from routers import (
+    adventure,
+    extract_beats,
+    generate,
+    items,
+    recap,
+    reference,
+    session_prep,
+)
 
 # Load environment variables from backend/.env when running locally.
 # In production (Render) these are injected directly into the environment.
@@ -38,6 +46,7 @@ app.include_router(session_prep.router, prefix="/api")
 app.include_router(reference.router, prefix="/api")
 app.include_router(adventure.router, prefix="/api")
 app.include_router(extract_beats.router, prefix="/api")
+app.include_router(items.router, prefix="/api")
 
 
 @app.get("/health")
