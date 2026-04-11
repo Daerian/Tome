@@ -26,6 +26,7 @@ __pycache__/
 *.pyo
 backend/venv/
 .pytest_cache/
+.ruff_cache/
 
 # Claude Code
 .claude/
