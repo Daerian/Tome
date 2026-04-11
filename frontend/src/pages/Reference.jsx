@@ -80,7 +80,11 @@ export default function Reference({ system, role }) {
         )}
         {messages.map((msg, i) => (
           <div key={i} style={styles.messageBlock}>
-            <div style={msg.role === 'user' ? styles.userLabel : styles.assistantLabel}>
+            <div
+              style={
+                msg.role === 'user' ? styles.userLabel : styles.assistantLabel
+              }
+            >
               {msg.role === 'user' ? 'You —' : 'Codex —'}
             </div>
             <div style={styles.messageText}>

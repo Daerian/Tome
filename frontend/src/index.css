@@ -1,27 +1,27 @@
 :root {
-  --page-bg: #FAF7F2;
-  --card-bg: #FDF8F0;
-  --sidebar-bg: #F2EDE3;
-  --hover-bg: #E8E0D0;
+  --page-bg: #faf7f2;
+  --card-bg: #fdf8f0;
+  --sidebar-bg: #f2ede3;
+  --hover-bg: #e8e0d0;
 
-  --ink-dark: #2C1810;
-  --ink-medium: #4A3728;
-  --ink-light: #6B5B4E;
-  --ink-faint: #8C7B6B;
+  --ink-dark: #2c1810;
+  --ink-medium: #4a3728;
+  --ink-light: #6b5b4e;
+  --ink-faint: #8c7b6b;
 
-  --accent: #722F37;
-  --accent-deep: #58180D;
+  --accent: #722f37;
+  --accent-deep: #58180d;
   --accent-rule: #922610;
-  --success: #2D5F2D;
-  --success-bg: #E8F0E8;
-  --danger: #8B2500;
-  --danger-bg: #F5E6E0;
+  --success: #2d5f2d;
+  --success-bg: #e8f0e8;
+  --danger: #8b2500;
+  --danger-bg: #f5e6e0;
   --sepia: #704214;
-  --gold: #B8860B;
+  --gold: #b8860b;
 
-  --border-light: #D4C5B0;
-  --border-medium: #B8A898;
-  --border-dark: #8C7B6B;
+  --border-light: #d4c5b0;
+  --border-medium: #b8a898;
+  --border-dark: #8c7b6b;
 
   --font-body: 'EB Garamond', Georgia, 'Times New Roman', serif;
   --font-heading: 'Cinzel', 'EB Garamond', Georgia, serif;
@@ -44,27 +44,27 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --page-bg: #1E1A15;
-    --card-bg: #2A2419;
+    --page-bg: #1e1a15;
+    --card-bg: #2a2419;
     --sidebar-bg: #171310;
     --hover-bg: #252017;
 
-    --ink-dark: #E8DCC8;
-    --ink-medium: #C4B8A4;
-    --ink-light: #9C9080;
-    --ink-faint: #6E6458;
+    --ink-dark: #e8dcc8;
+    --ink-medium: #c4b8a4;
+    --ink-light: #9c9080;
+    --ink-faint: #6e6458;
 
-    --accent: #C4666E;
-    --accent-deep: #A84848;
-    --accent-rule: #A84848;
-    --success: #6DAA6D;
-    --danger: #C45D4D;
-    --sepia: #C4956B;
-    --gold: #D4A84B;
+    --accent: #c4666e;
+    --accent-deep: #a84848;
+    --accent-rule: #a84848;
+    --success: #6daa6d;
+    --danger: #c45d4d;
+    --sepia: #c4956b;
+    --gold: #d4a84b;
 
-    --border-light: #3A3228;
-    --border-medium: #4A4038;
-    --border-dark: #5A5048;
+    --border-light: #3a3228;
+    --border-medium: #4a4038;
+    --border-dark: #5a5048;
   }
 
   select {

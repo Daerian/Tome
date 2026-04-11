@@ -73,7 +73,15 @@ export default function CampaignView({ session }) {
 
   if (loading) {
     return (
-      <p style={{ textAlign: 'center', marginTop: '2rem', color: 'var(--ink-faint)', fontFamily: 'var(--font-body)', fontStyle: 'italic' }}>
+      <p
+        style={{
+          textAlign: 'center',
+          marginTop: '2rem',
+          color: 'var(--ink-faint)',
+          fontFamily: 'var(--font-body)',
+          fontStyle: 'italic',
+        }}
+      >
         Loading...
       </p>
     );
@@ -85,7 +93,14 @@ export default function CampaignView({ session }) {
         <p style={{ color: 'var(--ink-medium)' }}>
           Campaign not found or you don't have access.
         </p>
-        <Link to="/" style={{ color: 'var(--accent)', borderBottom: '1px solid var(--accent)', textDecoration: 'none' }}>
+        <Link
+          to="/"
+          style={{
+            color: 'var(--accent)',
+            borderBottom: '1px solid var(--accent)',
+            textDecoration: 'none',
+          }}
+        >
           ← Back to campaigns
         </Link>
       </div>
@@ -315,8 +330,10 @@ const styles = {
   },
   divider: {
     width: '12px',
-    background: 'linear-gradient(to right, var(--border-light) 0%, var(--sidebar-bg) 25%, var(--hover-bg) 50%, var(--sidebar-bg) 75%, var(--border-light) 100%)',
-    boxShadow: 'inset 2px 0 4px rgba(0,0,0,0.08), inset -2px 0 4px rgba(0,0,0,0.08)',
+    background:
+      'linear-gradient(to right, var(--border-light) 0%, var(--sidebar-bg) 25%, var(--hover-bg) 50%, var(--sidebar-bg) 75%, var(--border-light) 100%)',
+    boxShadow:
+      'inset 2px 0 4px rgba(0,0,0,0.08), inset -2px 0 4px rgba(0,0,0,0.08)',
     flexShrink: 0,
   },
   panelTabBar: {

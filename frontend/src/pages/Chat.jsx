@@ -72,7 +72,7 @@ export default function Chat({ campaignId, session, role }) {
             <div style={styles.ornament}>── ✦ ──</div>
             <p style={styles.emptyText}>
               {campaignId
-                ? "Ask the Archive about this campaign\u2019s\nsessions, lore, and history."
+                ? 'Ask the Archive about this campaign\u2019s\nsessions, lore, and history.'
                 : 'Start a conversation...'}
             </p>
             <div style={styles.ornament}>── ✦ ──</div>
@@ -80,7 +80,11 @@ export default function Chat({ campaignId, session, role }) {
         )}
         {messages.map((msg, i) => (
           <div key={i} style={styles.messageBlock}>
-            <div style={msg.role === 'user' ? styles.userLabel : styles.assistantLabel}>
+            <div
+              style={
+                msg.role === 'user' ? styles.userLabel : styles.assistantLabel
+              }
+            >
               {msg.role === 'user' ? 'You —' : 'Archive —'}
             </div>
             <div style={styles.messageText}>{msg.content}</div>

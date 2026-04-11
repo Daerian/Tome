@@ -247,7 +247,8 @@ const styles = {
   },
   accentBar: {
     height: '5px',
-    background: 'linear-gradient(to right, var(--accent-rule), var(--gold), var(--accent-rule))',
+    background:
+      'linear-gradient(to right, var(--accent-rule), var(--gold), var(--accent-rule))',
   },
   header: {
     padding: '0.75rem 1rem 0.25rem',

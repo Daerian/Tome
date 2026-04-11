@@ -154,7 +154,13 @@ export default function Missions({ campaignId, session, role }) {
 
   if (loading)
     return (
-      <p style={{ textAlign: 'center', padding: '2rem', color: 'var(--ink-light)' }}>
+      <p
+        style={{
+          textAlign: 'center',
+          padding: '2rem',
+          color: 'var(--ink-light)',
+        }}
+      >
         Loading missions...
       </p>
     );
@@ -185,7 +191,15 @@ export default function Missions({ campaignId, session, role }) {
           marginBottom: '1rem',
         }}
       >
-        <h3 style={{ margin: 0, color: 'var(--ink-dark)', fontFamily: 'var(--font-heading)' }}>Missions</h3>
+        <h3
+          style={{
+            margin: 0,
+            color: 'var(--ink-dark)',
+            fontFamily: 'var(--font-heading)',
+          }}
+        >
+          Missions
+        </h3>
         {role === 'dm' && (
           <button style={s.addBtn} onClick={() => setShowCreate(!showCreate)}>
             {showCreate ? 'Cancel' : '+ New Mission'}
@@ -334,7 +348,13 @@ export default function Missions({ campaignId, session, role }) {
 
       {/* Mission list */}
       {filtered.length === 0 ? (
-        <p style={{ color: 'var(--ink-faint)', textAlign: 'center', padding: '2rem' }}>
+        <p
+          style={{
+            color: 'var(--ink-faint)',
+            textAlign: 'center',
+            padding: '2rem',
+          }}
+        >
           {filter === 'all' ? 'No missions yet.' : `No ${filter} missions.`}
         </p>
       ) : (
@@ -373,7 +393,8 @@ export default function Missions({ campaignId, session, role }) {
                     <span
                       style={{
                         ...s.statusBadge,
-                        color: statusColors[m.status]?.text || 'var(--ink-medium)',
+                        color:
+                          statusColors[m.status]?.text || 'var(--ink-medium)',
                       }}
                     >
                       {m.status}
@@ -429,7 +450,8 @@ export default function Missions({ campaignId, session, role }) {
                         style={{
                           ...s.progressFill,
                           width: `${pct}%`,
-                          backgroundColor: pct === 100 ? 'var(--success)' : 'var(--accent)',
+                          backgroundColor:
+                            pct === 100 ? 'var(--success)' : 'var(--accent)',
                         }}
                       />
                     </div>
@@ -640,7 +662,15 @@ function MissionDetail({
             }}
           >
             <div>
-              <h3 style={{ margin: 0, color: 'var(--ink-dark)', fontFamily: 'var(--font-heading)' }}>{mission.title}</h3>
+              <h3
+                style={{
+                  margin: 0,
+                  color: 'var(--ink-dark)',
+                  fontFamily: 'var(--font-heading)',
+                }}
+              >
+                {mission.title}
+              </h3>
               <div
                 style={{
                   display: 'flex',
@@ -708,7 +738,8 @@ function MissionDetail({
                   style={{
                     ...s.progressFill,
                     width: `${pct}%`,
-                    backgroundColor: pct === 100 ? 'var(--success)' : 'var(--accent)',
+                    backgroundColor:
+                      pct === 100 ? 'var(--success)' : 'var(--accent)',
                   }}
                 />
               </div>
@@ -737,7 +768,9 @@ function MissionDetail({
               }}
             >
               Quest Giver:{' '}
-              <strong style={{ color: 'var(--ink-dark)' }}>{questGiver.name}</strong>
+              <strong style={{ color: 'var(--ink-dark)' }}>
+                {questGiver.name}
+              </strong>
             </p>
           )}
 
@@ -974,7 +1007,13 @@ function MissionDetail({
         )}
 
         {stages.length === 0 ? (
-          <p style={{ color: 'var(--ink-faint)', fontSize: '0.85rem', fontStyle: 'italic' }}>
+          <p
+            style={{
+              color: 'var(--ink-faint)',
+              fontSize: '0.85rem',
+              fontStyle: 'italic',
+            }}
+          >
             No stages yet.
           </p>
         ) : (
@@ -1081,7 +1120,9 @@ function MissionDetail({
                     />
                     <span
                       style={{
-                        color: obj.is_completed ? 'var(--ink-faint)' : 'var(--ink-dark)',
+                        color: obj.is_completed
+                          ? 'var(--ink-faint)'
+                          : 'var(--ink-dark)',
                         textDecoration: obj.is_completed
                           ? 'line-through'
                           : 'none',
@@ -1089,7 +1130,12 @@ function MissionDetail({
                     >
                       {obj.description}
                       {obj.is_optional && (
-                        <span style={{ color: 'var(--ink-faint)', fontSize: '0.7rem' }}>
+                        <span
+                          style={{
+                            color: 'var(--ink-faint)',
+                            fontSize: '0.7rem',
+                          }}
+                        >
                           {' '}
                           (optional)
                         </span>

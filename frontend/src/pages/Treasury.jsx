@@ -247,7 +247,13 @@ export default function Treasury({ campaignId, session, role }) {
 
   if (loading)
     return (
-      <p style={{ textAlign: 'center', padding: '2rem', color: 'var(--ink-light)' }}>
+      <p
+        style={{
+          textAlign: 'center',
+          padding: '2rem',
+          color: 'var(--ink-light)',
+        }}
+      >
         Loading treasury...
       </p>
     );
@@ -346,29 +352,65 @@ export default function Treasury({ campaignId, session, role }) {
             </div>
 
             {/* Search status */}
-            {searching && (
-              <p style={s.searchMuted}>Searching...</p>
-            )}
+            {searching && <p style={s.searchMuted}>Searching...</p>}
 
             {/* Results */}
             {searchResults.length > 0 && (
               <div style={s.searchResults}>
                 {searchResults.map((r, i) => (
                   <div key={i} style={s.searchResultRow}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flex: 1, flexWrap: 'wrap' }}>
-                      <span style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--ink-dark)' }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.4rem',
+                        flex: 1,
+                        flexWrap: 'wrap',
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontWeight: 600,
+                          fontSize: '0.85rem',
+                          color: 'var(--ink-dark)',
+                        }}
+                      >
                         {r.name}
                       </span>
-                      <span style={{ ...s.badge, color: rarityColors[r.rarity]?.text || 'var(--ink-light)' }}>
+                      <span
+                        style={{
+                          ...s.badge,
+                          color:
+                            rarityColors[r.rarity]?.text || 'var(--ink-light)',
+                        }}
+                      >
                         {r.rarity.replace('_', ' ')}
                       </span>
-                      <span style={{ fontSize: '0.7rem', color: 'var(--ink-faint)' }}>
+                      <span
+                        style={{
+                          fontSize: '0.7rem',
+                          color: 'var(--ink-faint)',
+                        }}
+                      >
                         {r.item_type}
                       </span>
                       {r.requires_attunement && (
-                        <span style={{ fontSize: '0.65rem', color: 'var(--accent)' }}>attunement</span>
+                        <span
+                          style={{
+                            fontSize: '0.65rem',
+                            color: 'var(--accent)',
+                          }}
+                        >
+                          attunement
+                        </span>
                       )}
-                      <span style={{ fontSize: '0.7rem', color: 'var(--ink-faint)', marginLeft: 'auto' }}>
+                      <span
+                        style={{
+                          fontSize: '0.7rem',
+                          color: 'var(--ink-faint)',
+                          marginLeft: 'auto',
+                        }}
+                      >
                         {r.source}
                       </span>
                     </div>
@@ -385,7 +427,9 @@ export default function Treasury({ campaignId, session, role }) {
 
             {/* No results */}
             {!searching && itemSearch.trim() && searchResults.length === 0 && (
-              <p style={s.searchMuted}>No results — fill the form manually below.</p>
+              <p style={s.searchMuted}>
+                No results — fill the form manually below.
+              </p>
             )}
 
             {/* Import confirmation */}
@@ -534,7 +578,13 @@ export default function Treasury({ campaignId, session, role }) {
 
       {/* Item list */}
       {filtered.length === 0 ? (
-        <p style={{ color: 'var(--ink-faint)', textAlign: 'center', padding: '2rem' }}>
+        <p
+          style={{
+            color: 'var(--ink-faint)',
+            textAlign: 'center',
+            padding: '2rem',
+          }}
+        >
           {items.length === 0
             ? 'No items in the treasury yet.'
             : 'No matching items.'}
@@ -570,17 +620,23 @@ export default function Treasury({ campaignId, session, role }) {
                     <span
                       style={{
                         ...s.badge,
-                        color: rarityColors[item.rarity]?.text || 'var(--ink-medium)',
+                        color:
+                          rarityColors[item.rarity]?.text ||
+                          'var(--ink-medium)',
                         fontWeight: rarityColors[item.rarity]?.bold ? 700 : 600,
                       }}
                     >
                       {item.rarity.replace('_', ' ')}
                     </span>
-                    <span style={{ fontSize: '0.7rem', color: 'var(--ink-faint)' }}>
+                    <span
+                      style={{ fontSize: '0.7rem', color: 'var(--ink-faint)' }}
+                    >
                       {item.item_type}
                     </span>
                     {item.requires_attunement && (
-                      <span style={{ fontSize: '0.65rem', color: 'var(--accent)' }}>
+                      <span
+                        style={{ fontSize: '0.65rem', color: 'var(--accent)' }}
+                      >
                         *
                       </span>
                     )}
@@ -609,7 +665,9 @@ export default function Treasury({ campaignId, session, role }) {
                     </p>
                   )}
                   {holder && (
-                    <span style={{ fontSize: '0.75rem', color: 'var(--ink-light)' }}>
+                    <span
+                      style={{ fontSize: '0.75rem', color: 'var(--ink-light)' }}
+                    >
                       Held by: {holder.name}
                     </span>
                   )}
@@ -695,7 +753,9 @@ function ItemDetail({
             }}
           >
             <div>
-              <h3 style={{ margin: 0, color: 'var(--ink-dark)' }}>{item.name}</h3>
+              <h3 style={{ margin: 0, color: 'var(--ink-dark)' }}>
+                {item.name}
+              </h3>
               <div
                 style={{
                   display: 'flex',
@@ -779,7 +839,9 @@ function ItemDetail({
                 border: '1px solid var(--border-light)',
               }}
             >
-              <strong style={{ fontSize: '0.8rem', color: 'var(--accent-deep)' }}>
+              <strong
+                style={{ fontSize: '0.8rem', color: 'var(--accent-deep)' }}
+              >
                 Properties
               </strong>
               <p
@@ -808,13 +870,17 @@ function ItemDetail({
             {holder && (
               <span>
                 Held by:{' '}
-                <strong style={{ color: 'var(--ink-dark)' }}>{holder.name}</strong>
+                <strong style={{ color: 'var(--ink-dark)' }}>
+                  {holder.name}
+                </strong>
               </span>
             )}
             {attunedTo && (
               <span>
                 Attuned to:{' '}
-                <strong style={{ color: 'var(--ink-dark)' }}>{attunedTo.name}</strong>
+                <strong style={{ color: 'var(--ink-dark)' }}>
+                  {attunedTo.name}
+                </strong>
               </span>
             )}
             {sourceSession && (

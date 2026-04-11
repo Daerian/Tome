@@ -284,9 +284,10 @@ export default function SessionDetail({
         is_cursed: false,
         added_by: session.user.id,
         source_session_id: sessionId,
-        notes: data.value_gp != null
-          ? `Value: ${(data.value_gp * data.quantity).toLocaleString()} GP${data.quantity > 1 ? ` (${data.quantity}x ${data.value_gp} GP each)` : ''}`
-          : null,
+        notes:
+          data.value_gp != null
+            ? `Value: ${(data.value_gp * data.quantity).toLocaleString()} GP${data.quantity > 1 ? ` (${data.quantity}x ${data.value_gp} GP each)` : ''}`
+            : null,
       };
       await supabase.from('treasury_items').insert(treasuryInsert);
     }
@@ -341,7 +342,13 @@ export default function SessionDetail({
 
   if (loading) {
     return (
-      <p style={{ textAlign: 'center', marginTop: '2rem', color: 'var(--ink-light)' }}>
+      <p
+        style={{
+          textAlign: 'center',
+          marginTop: '2rem',
+          color: 'var(--ink-light)',
+        }}
+      >
         Loading session...
       </p>
     );
@@ -806,8 +813,11 @@ export default function SessionDetail({
                           style={{
                             ...styles.lootCatBadge,
                             backgroundColor:
-                              lootCatColors[l.category]?.bg || 'var(--sidebar-bg)',
-                            color: lootCatColors[l.category]?.text || 'var(--ink-medium)',
+                              lootCatColors[l.category]?.bg ||
+                              'var(--sidebar-bg)',
+                            color:
+                              lootCatColors[l.category]?.text ||
+                              'var(--ink-medium)',
                           }}
                         >
                           {l.category.replace('_', ' ')}
@@ -824,7 +834,10 @@ export default function SessionDetail({
                         </span>
                         {l.value_gp != null && (
                           <span
-                            style={{ fontSize: '0.75rem', color: 'var(--sepia)' }}
+                            style={{
+                              fontSize: '0.75rem',
+                              color: 'var(--sepia)',
+                            }}
                           >
                             {(l.value_gp * l.quantity).toLocaleString()} GP
                           </span>

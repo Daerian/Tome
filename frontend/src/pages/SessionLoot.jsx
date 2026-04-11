@@ -113,7 +113,13 @@ export default function SessionLoot({ campaignId, session, role }) {
 
   if (loading)
     return (
-      <p style={{ textAlign: 'center', padding: '2rem', color: 'var(--ink-light)' }}>
+      <p
+        style={{
+          textAlign: 'center',
+          padding: '2rem',
+          color: 'var(--ink-light)',
+        }}
+      >
         Loading loot...
       </p>
     );
@@ -128,7 +134,15 @@ export default function SessionLoot({ campaignId, session, role }) {
           marginBottom: '1rem',
         }}
       >
-        <h3 style={{ margin: 0, color: 'var(--ink-dark)', fontFamily: 'var(--font-heading)' }}>Session Loot</h3>
+        <h3
+          style={{
+            margin: 0,
+            color: 'var(--ink-dark)',
+            fontFamily: 'var(--font-heading)',
+          }}
+        >
+          Session Loot
+        </h3>
         <button style={s.addBtn} onClick={() => setShowAdd(!showAdd)}>
           {showAdd ? 'Cancel' : '+ Log Loot'}
         </button>
@@ -199,7 +213,13 @@ export default function SessionLoot({ campaignId, session, role }) {
 
       {/* Loot grouped by session */}
       {orderedSessionIds.length === 0 ? (
-        <p style={{ color: 'var(--ink-faint)', textAlign: 'center', padding: '2rem' }}>
+        <p
+          style={{
+            color: 'var(--ink-faint)',
+            textAlign: 'center',
+            padding: '2rem',
+          }}
+        >
           No loot logged yet.
         </p>
       ) : (
@@ -224,7 +244,9 @@ export default function SessionLoot({ campaignId, session, role }) {
                     gap: '0.5rem',
                   }}
                 >
-                  <span style={{ fontSize: '0.7rem', color: 'var(--ink-faint)' }}>
+                  <span
+                    style={{ fontSize: '0.7rem', color: 'var(--ink-faint)' }}
+                  >
                     {isExpanded ? '\u25BC' : '\u25B6'}
                   </span>
                   <span
@@ -237,7 +259,9 @@ export default function SessionLoot({ campaignId, session, role }) {
                     Session {sess.session_number}
                     {sess.title ? `: ${sess.title}` : ''}
                   </span>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--ink-faint)' }}>
+                  <span
+                    style={{ fontSize: '0.75rem', color: 'var(--ink-faint)' }}
+                  >
                     ({items.length} item{items.length !== 1 ? 's' : ''})
                   </span>
                 </div>
@@ -276,9 +300,11 @@ export default function SessionLoot({ campaignId, session, role }) {
                             style={{
                               ...s.catBadge,
                               backgroundColor:
-                                catColors[item.category]?.bg || 'var(--sidebar-bg)',
+                                catColors[item.category]?.bg ||
+                                'var(--sidebar-bg)',
                               color:
-                                catColors[item.category]?.text || 'var(--ink-medium)',
+                                catColors[item.category]?.text ||
+                                'var(--ink-medium)',
                             }}
                           >
                             {item.category.replace('_', ' ')}
@@ -295,7 +321,10 @@ export default function SessionLoot({ campaignId, session, role }) {
                           </span>
                           {item.value_gp && (
                             <span
-                              style={{ fontSize: '0.75rem', color: 'var(--gold)' }}
+                              style={{
+                                fontSize: '0.75rem',
+                                color: 'var(--gold)',
+                              }}
                             >
                               {item.quantity > 1
                                 ? `${(item.value_gp * item.quantity).toLocaleString()} GP`
@@ -347,7 +376,11 @@ export default function SessionLoot({ campaignId, session, role }) {
           }}
         >
           <span
-            style={{ fontSize: '0.85rem', color: 'var(--sepia)', fontWeight: 600 }}
+            style={{
+              fontSize: '0.85rem',
+              color: 'var(--sepia)',
+              fontWeight: 600,
+            }}
           >
             Total Value:{' '}
             {orderedSessionIds
@@ -430,7 +463,10 @@ const s = {
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  lootItem: { padding: '0.4rem 0.5rem', borderBottom: '1px solid var(--sidebar-bg)' },
+  lootItem: {
+    padding: '0.4rem 0.5rem',
+    borderBottom: '1px solid var(--sidebar-bg)',
+  },
   catBadge: {
     fontSize: '0.6rem',
     fontWeight: 600,

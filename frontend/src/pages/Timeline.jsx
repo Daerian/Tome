@@ -187,7 +187,13 @@ export default function Timeline({ campaignId, role }) {
 
   if (loading) {
     return (
-      <p style={{ textAlign: 'center', marginTop: '2rem', color: 'var(--ink-light)' }}>
+      <p
+        style={{
+          textAlign: 'center',
+          marginTop: '2rem',
+          color: 'var(--ink-light)',
+        }}
+      >
         Loading...
       </p>
     );
@@ -319,7 +325,11 @@ export default function Timeline({ campaignId, role }) {
                               : 'var(--ink-faint)',
                       }}
                     >
-                      {ev.importance === 'major' ? '◆' : ev.importance === 'minor' ? '◇' : '·'}
+                      {ev.importance === 'major'
+                        ? '◆'
+                        : ev.importance === 'minor'
+                          ? '◇'
+                          : '·'}
                     </span>
                     <span style={styles.eventDate}>{ev.in_world_date}</span>
                     <span style={styles.eventType}>
