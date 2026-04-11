@@ -113,7 +113,7 @@ export default function SessionLoot({ campaignId, session, role }) {
 
   if (loading)
     return (
-      <p style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
+      <p style={{ textAlign: 'center', padding: '2rem', color: 'var(--ink-light)' }}>
         Loading loot...
       </p>
     );
@@ -128,7 +128,7 @@ export default function SessionLoot({ campaignId, session, role }) {
           marginBottom: '1rem',
         }}
       >
-        <h3 style={{ margin: 0, color: '#1e293b' }}>Session Loot</h3>
+        <h3 style={{ margin: 0, color: 'var(--ink-dark)', fontFamily: 'var(--font-heading)' }}>Session Loot</h3>
         <button style={s.addBtn} onClick={() => setShowAdd(!showAdd)}>
           {showAdd ? 'Cancel' : '+ Log Loot'}
         </button>
@@ -199,7 +199,7 @@ export default function SessionLoot({ campaignId, session, role }) {
 
       {/* Loot grouped by session */}
       {orderedSessionIds.length === 0 ? (
-        <p style={{ color: '#94a3b8', textAlign: 'center', padding: '2rem' }}>
+        <p style={{ color: 'var(--ink-faint)', textAlign: 'center', padding: '2rem' }}>
           No loot logged yet.
         </p>
       ) : (
@@ -224,20 +224,20 @@ export default function SessionLoot({ campaignId, session, role }) {
                     gap: '0.5rem',
                   }}
                 >
-                  <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--ink-faint)' }}>
                     {isExpanded ? '\u25BC' : '\u25B6'}
                   </span>
                   <span
                     style={{
                       fontWeight: 600,
-                      color: '#1e293b',
+                      color: 'var(--ink-dark)',
                       fontSize: '0.85rem',
                     }}
                   >
                     Session {sess.session_number}
                     {sess.title ? `: ${sess.title}` : ''}
                   </span>
-                  <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--ink-faint)' }}>
                     ({items.length} item{items.length !== 1 ? 's' : ''})
                   </span>
                 </div>
@@ -245,7 +245,7 @@ export default function SessionLoot({ campaignId, session, role }) {
                   <span
                     style={{
                       fontSize: '0.75rem',
-                      color: '#b45309',
+                      color: 'var(--gold)',
                       fontWeight: 600,
                     }}
                   >
@@ -276,9 +276,9 @@ export default function SessionLoot({ campaignId, session, role }) {
                             style={{
                               ...s.catBadge,
                               backgroundColor:
-                                catColors[item.category]?.bg || '#f1f5f9',
+                                catColors[item.category]?.bg || 'var(--sidebar-bg)',
                               color:
-                                catColors[item.category]?.text || '#475569',
+                                catColors[item.category]?.text || 'var(--ink-medium)',
                             }}
                           >
                             {item.category.replace('_', ' ')}
@@ -286,7 +286,7 @@ export default function SessionLoot({ campaignId, session, role }) {
                           <span
                             style={{
                               fontWeight: 500,
-                              color: '#1e293b',
+                              color: 'var(--ink-dark)',
                               fontSize: '0.85rem',
                             }}
                           >
@@ -295,7 +295,7 @@ export default function SessionLoot({ campaignId, session, role }) {
                           </span>
                           {item.value_gp && (
                             <span
-                              style={{ fontSize: '0.75rem', color: '#b45309' }}
+                              style={{ fontSize: '0.75rem', color: 'var(--gold)' }}
                             >
                               {item.quantity > 1
                                 ? `${(item.value_gp * item.quantity).toLocaleString()} GP`
@@ -319,7 +319,7 @@ export default function SessionLoot({ campaignId, session, role }) {
                           style={{
                             margin: '0.15rem 0 0 0',
                             fontSize: '0.75rem',
-                            color: '#64748b',
+                            color: 'var(--ink-light)',
                           }}
                         >
                           {item.description}
@@ -340,14 +340,14 @@ export default function SessionLoot({ campaignId, session, role }) {
           style={{
             marginTop: '1rem',
             padding: '0.75rem',
-            backgroundColor: '#fefce8',
-            borderRadius: '8px',
-            border: '1px solid #fef08a',
+            backgroundColor: 'var(--card-bg)',
+            borderRadius: '2px',
+            border: '1px solid var(--gold)',
             textAlign: 'right',
           }}
         >
           <span
-            style={{ fontSize: '0.85rem', color: '#854d0e', fontWeight: 600 }}
+            style={{ fontSize: '0.85rem', color: 'var(--sepia)', fontWeight: 600 }}
           >
             Total Value:{' '}
             {orderedSessionIds
@@ -364,95 +364,95 @@ export default function SessionLoot({ campaignId, session, role }) {
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 const catColors = {
-  gold: { bg: '#fef3c7', text: '#b45309' },
-  item: { bg: '#f1f5f9', text: '#475569' },
-  gem: { bg: '#ede9fe', text: '#6d28d9' },
-  art: { bg: '#fce7f3', text: '#be185d' },
-  magic_item: { bg: '#dbeafe', text: '#1d4ed8' },
-  other: { bg: '#f1f5f9', text: '#64748b' },
+  gold: { bg: 'var(--card-bg)', text: 'var(--gold)' },
+  item: { bg: 'var(--sidebar-bg)', text: 'var(--ink-medium)' },
+  gem: { bg: 'var(--card-bg)', text: 'var(--accent)' },
+  art: { bg: 'var(--card-bg)', text: 'var(--sepia)' },
+  magic_item: { bg: 'var(--card-bg)', text: 'var(--accent-deep)' },
+  other: { bg: 'var(--sidebar-bg)', text: 'var(--ink-light)' },
 };
 
 const s = {
   addBtn: {
     padding: '0.35rem 0.75rem',
-    borderRadius: '6px',
-    backgroundColor: '#2563eb',
-    color: '#fff',
+    borderRadius: '2px',
+    backgroundColor: 'var(--accent)',
+    color: 'var(--card-bg)',
     border: 'none',
     fontSize: '0.8rem',
     cursor: 'pointer',
-    fontFamily: 'inherit',
+    fontFamily: 'var(--font-body)',
   },
   createForm: {
     padding: '1rem',
-    border: '1px solid #e2e8f0',
-    borderRadius: '8px',
+    border: '1px solid var(--border-light)',
+    borderRadius: '2px',
     marginBottom: '1rem',
-    backgroundColor: '#f8fafc',
+    backgroundColor: 'var(--sidebar-bg)',
     display: 'flex',
     flexDirection: 'column',
     gap: '0.5rem',
   },
   input: {
     padding: '0.5rem',
-    border: '1px solid #cbd5e1',
-    borderRadius: '6px',
+    border: '1px solid var(--border-medium)',
+    borderRadius: '2px',
     fontSize: '0.85rem',
-    fontFamily: 'inherit',
+    fontFamily: 'var(--font-body)',
     width: '100%',
     boxSizing: 'border-box',
   },
   select: {
     padding: '0.5rem',
-    border: '1px solid #cbd5e1',
-    borderRadius: '6px',
+    border: '1px solid var(--border-medium)',
+    borderRadius: '2px',
     fontSize: '0.85rem',
-    fontFamily: 'inherit',
-    backgroundColor: '#fff',
+    fontFamily: 'var(--font-body)',
+    backgroundColor: 'var(--card-bg)',
   },
   saveBtn: {
     padding: '0.4rem 0.8rem',
-    borderRadius: '6px',
-    backgroundColor: '#2563eb',
-    color: '#fff',
+    borderRadius: '2px',
+    backgroundColor: 'var(--accent)',
+    color: 'var(--card-bg)',
     border: 'none',
     fontSize: '0.8rem',
     cursor: 'pointer',
-    fontFamily: 'inherit',
+    fontFamily: 'var(--font-body)',
   },
   sessionHeader: {
     padding: '0.6rem 0.75rem',
-    backgroundColor: '#fff',
-    border: '1px solid #e2e8f0',
-    borderRadius: '8px',
+    backgroundColor: 'var(--card-bg)',
+    border: '1px solid var(--border-light)',
+    borderRadius: '2px',
     cursor: 'pointer',
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  lootItem: { padding: '0.4rem 0.5rem', borderBottom: '1px solid #f1f5f9' },
+  lootItem: { padding: '0.4rem 0.5rem', borderBottom: '1px solid var(--sidebar-bg)' },
   catBadge: {
     fontSize: '0.6rem',
     fontWeight: 600,
     padding: '0.1rem 0.35rem',
-    borderRadius: '3px',
+    borderRadius: '1px',
     textTransform: 'uppercase',
   },
   delSmBtn: {
     background: 'none',
     border: 'none',
-    color: '#94a3b8',
+    color: 'var(--ink-faint)',
     cursor: 'pointer',
     fontSize: '1rem',
     padding: '0 0.3rem',
-    fontFamily: 'inherit',
+    fontFamily: 'var(--font-body)',
   },
   textarea: {
     padding: '0.5rem',
-    border: '1px solid #cbd5e1',
-    borderRadius: '6px',
+    border: '1px solid var(--border-medium)',
+    borderRadius: '2px',
     fontSize: '0.85rem',
-    fontFamily: 'inherit',
+    fontFamily: 'var(--font-body)',
     width: '100%',
     boxSizing: 'border-box',
     resize: 'vertical',

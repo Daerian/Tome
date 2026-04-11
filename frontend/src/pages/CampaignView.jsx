@@ -73,7 +73,7 @@ export default function CampaignView({ session }) {
 
   if (loading) {
     return (
-      <p style={{ textAlign: 'center', marginTop: '2rem', color: '#64748b' }}>
+      <p style={{ textAlign: 'center', marginTop: '2rem', color: 'var(--ink-faint)', fontFamily: 'var(--font-body)', fontStyle: 'italic' }}>
         Loading...
       </p>
     );
@@ -82,11 +82,11 @@ export default function CampaignView({ session }) {
   if (!campaign) {
     return (
       <div style={{ textAlign: 'center', marginTop: '3rem' }}>
-        <p style={{ color: '#334155' }}>
+        <p style={{ color: 'var(--ink-medium)' }}>
           Campaign not found or you don't have access.
         </p>
-        <Link to="/" style={{ color: '#2563eb' }}>
-          Back to campaigns
+        <Link to="/" style={{ color: 'var(--accent)', borderBottom: '1px solid var(--accent)', textDecoration: 'none' }}>
+          ← Back to campaigns
         </Link>
       </div>
     );
@@ -236,18 +236,21 @@ const styles = {
     flexWrap: 'wrap',
     gap: '0.75rem',
     padding: '1rem 1.5rem',
-    borderBottom: '1px solid #e2e8f0',
-    backgroundColor: '#f8fafc',
+    borderBottom: '2px solid var(--border-medium)',
+    backgroundColor: 'var(--sidebar-bg)',
   },
   name: {
     margin: 0,
-    fontSize: '1.25rem',
-    color: '#1e293b',
+    fontSize: '1.2rem',
+    fontFamily: 'var(--font-heading)',
+    color: 'var(--ink-dark)',
   },
   desc: {
     margin: '0.25rem 0 0 0',
     fontSize: '0.875rem',
-    color: '#64748b',
+    fontFamily: 'var(--font-body)',
+    fontStyle: 'italic',
+    color: 'var(--ink-light)',
   },
   meta: {
     display: 'flex',
@@ -257,30 +260,34 @@ const styles = {
   badge: {
     fontSize: '0.7rem',
     fontWeight: 600,
-    padding: '0.2rem 0.5rem',
-    borderRadius: '4px',
-    backgroundColor: '#ede9fe',
-    color: '#6d28d9',
+    fontVariant: 'small-caps',
+    letterSpacing: '0.08em',
+    color: 'var(--accent)',
+    fontFamily: 'var(--font-body)',
   },
   system: {
     fontSize: '0.75rem',
-    color: '#94a3b8',
+    color: 'var(--ink-faint)',
   },
   copyBtn: {
-    padding: '0.3rem 0.6rem',
-    borderRadius: '6px',
+    padding: '0.3rem 0',
+    borderRadius: 0,
     backgroundColor: 'transparent',
-    border: '1px solid #cbd5e1',
-    color: '#475569',
+    border: 'none',
+    borderBottom: '1px solid currentColor',
+    color: 'var(--ink-medium)',
+    fontFamily: 'var(--font-body)',
     fontSize: '0.75rem',
     cursor: 'pointer',
   },
   deleteBtn: {
-    padding: '0.3rem 0.6rem',
-    borderRadius: '6px',
+    padding: '0.3rem 0',
+    borderRadius: 0,
     backgroundColor: 'transparent',
-    border: '1px solid #fca5a5',
-    color: '#dc2626',
+    border: 'none',
+    borderBottom: '1px solid currentColor',
+    color: 'var(--danger)',
+    fontFamily: 'var(--font-body)',
     fontSize: '0.75rem',
     cursor: 'pointer',
   },
@@ -288,29 +295,35 @@ const styles = {
     display: 'flex',
     flex: 1,
     overflow: 'hidden',
+    border: '2px solid var(--border-medium)',
+    margin: '0 0.5rem 0.5rem',
+    boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
   },
   leftPanel: {
     width: '50%',
     display: 'flex',
     flexDirection: 'column',
     overflow: 'hidden',
+    backgroundColor: 'var(--page-bg)',
   },
   rightPanel: {
     width: '50%',
     display: 'flex',
     flexDirection: 'column',
     overflow: 'hidden',
+    backgroundColor: 'var(--page-bg)',
   },
   divider: {
-    width: '1px',
-    backgroundColor: '#e2e8f0',
+    width: '12px',
+    background: 'linear-gradient(to right, var(--border-light) 0%, var(--sidebar-bg) 25%, var(--hover-bg) 50%, var(--sidebar-bg) 75%, var(--border-light) 100%)',
+    boxShadow: 'inset 2px 0 4px rgba(0,0,0,0.08), inset -2px 0 4px rgba(0,0,0,0.08)',
     flexShrink: 0,
   },
   panelTabBar: {
     display: 'flex',
     gap: '0',
-    borderBottom: '1px solid #e2e8f0',
-    backgroundColor: '#fff',
+    borderBottom: '2px solid var(--border-medium)',
+    backgroundColor: 'var(--sidebar-bg)',
     flexShrink: 0,
   },
   panelTab: {
@@ -319,20 +332,24 @@ const styles = {
     border: 'none',
     borderBottom: '2px solid transparent',
     fontSize: '0.8rem',
-    color: '#64748b',
+    fontFamily: 'var(--font-body)',
+    fontVariant: 'small-caps',
+    letterSpacing: '0.06em',
+    color: 'var(--ink-light)',
     cursor: 'pointer',
-    fontFamily: 'inherit',
   },
   panelTabActive: {
     padding: '0.55rem 1rem',
     background: 'none',
     border: 'none',
-    borderBottom: '2px solid #2563eb',
+    borderBottom: '2px solid var(--accent-rule)',
     fontSize: '0.8rem',
-    color: '#2563eb',
+    fontFamily: 'var(--font-body)',
+    fontVariant: 'small-caps',
+    letterSpacing: '0.06em',
+    color: 'var(--accent-deep)',
     fontWeight: 600,
     cursor: 'pointer',
-    fontFamily: 'inherit',
   },
   panelContent: {
     flex: 1,

@@ -264,14 +264,51 @@ export default function SessionDetail({
         value_gp: '',
         description: '',
       });
+
+      // Sync to treasury
+      const categoryToItemType = {
+        magic_item: 'wondrous',
+        gold: 'other',
+        gem: 'other',
+        art: 'other',
+        item: 'other',
+        other: 'other',
+      };
+      const treasuryInsert = {
+        campaign_id: campaignId,
+        name: data.name,
+        description: data.description || null,
+        rarity: data.category === 'magic_item' ? 'uncommon' : 'common',
+        item_type: categoryToItemType[data.category] || 'other',
+        requires_attunement: false,
+        is_cursed: false,
+        added_by: session.user.id,
+        source_session_id: sessionId,
+        notes: data.value_gp != null
+          ? `Value: ${(data.value_gp * data.quantity).toLocaleString()} GP${data.quantity > 1 ? ` (${data.quantity}x ${data.value_gp} GP each)` : ''}`
+          : null,
+      };
+      await supabase.from('treasury_items').insert(treasuryInsert);
     }
     setAddingLoot(false);
   }
 
   async function deleteLootItem(id) {
     if (!window.confirm('Remove this loot entry?')) return;
+    const lootItem = loot.find((l) => l.id === id);
     const { error } = await supabase.from('session_loot').delete().eq('id', id);
-    if (!error) setLoot((prev) => prev.filter((l) => l.id !== id));
+    if (!error) {
+      setLoot((prev) => prev.filter((l) => l.id !== id));
+      // Remove the corresponding treasury entry
+      if (lootItem) {
+        await supabase
+          .from('treasury_items')
+          .delete()
+          .eq('campaign_id', campaignId)
+          .eq('source_session_id', sessionId)
+          .eq('name', lootItem.name);
+      }
+    }
   }
 
   async function addNote() {
@@ -304,7 +341,7 @@ export default function SessionDetail({
 
   if (loading) {
     return (
-      <p style={{ textAlign: 'center', marginTop: '2rem', color: '#64748b' }}>
+      <p style={{ textAlign: 'center', marginTop: '2rem', color: 'var(--ink-light)' }}>
         Loading session...
       </p>
     );
@@ -649,7 +686,7 @@ export default function SessionDetail({
                 style={{
                   fontWeight: 400,
                   fontSize: '0.8rem',
-                  color: '#b45309',
+                  color: 'var(--sepia)',
                   marginLeft: '0.5rem',
                 }}
               >
@@ -769,8 +806,8 @@ export default function SessionDetail({
                           style={{
                             ...styles.lootCatBadge,
                             backgroundColor:
-                              lootCatColors[l.category]?.bg || '#f1f5f9',
-                            color: lootCatColors[l.category]?.text || '#475569',
+                              lootCatColors[l.category]?.bg || 'var(--sidebar-bg)',
+                            color: lootCatColors[l.category]?.text || 'var(--ink-medium)',
                           }}
                         >
                           {l.category.replace('_', ' ')}
@@ -778,7 +815,7 @@ export default function SessionDetail({
                         <span
                           style={{
                             fontWeight: 500,
-                            color: '#1e293b',
+                            color: 'var(--ink-dark)',
                             fontSize: '0.875rem',
                           }}
                         >
@@ -787,7 +824,7 @@ export default function SessionDetail({
                         </span>
                         {l.value_gp != null && (
                           <span
-                            style={{ fontSize: '0.75rem', color: '#b45309' }}
+                            style={{ fontSize: '0.75rem', color: 'var(--sepia)' }}
                           >
                             {(l.value_gp * l.quantity).toLocaleString()} GP
                           </span>
@@ -808,7 +845,7 @@ export default function SessionDetail({
                         style={{
                           margin: '0.15rem 0 0 0',
                           fontSize: '0.75rem',
-                          color: '#64748b',
+                          color: 'var(--ink-light)',
                         }}
                       >
                         {l.description}
@@ -887,11 +924,12 @@ const styles = {
   backBtn: {
     background: 'none',
     border: 'none',
-    color: '#2563eb',
+    color: 'var(--accent)',
     fontSize: '0.875rem',
     cursor: 'pointer',
     padding: 0,
     marginBottom: '1rem',
+    fontFamily: 'var(--font-body)',
   },
   header: {
     display: 'flex',
@@ -904,12 +942,13 @@ const styles = {
   title: {
     margin: 0,
     fontSize: '1.25rem',
-    color: '#1e293b',
+    color: 'var(--ink-dark)',
+    fontFamily: 'var(--font-heading)',
   },
   date: {
     margin: '0.25rem 0 0 0',
     fontSize: '0.85rem',
-    color: '#64748b',
+    color: 'var(--ink-light)',
   },
   statusArea: {
     display: 'flex',
@@ -917,61 +956,67 @@ const styles = {
   },
   statusSelect: {
     padding: '0.35rem 0.5rem',
-    borderRadius: '6px',
-    border: '1px solid #cbd5e1',
+    borderRadius: '2px',
+    border: '1px solid var(--border-medium)',
     fontSize: '0.8rem',
     outline: 'none',
+    fontFamily: 'var(--font-body)',
   },
   badge: {
     fontSize: '0.75rem',
     fontWeight: 500,
     padding: '0.2rem 0.5rem',
-    borderRadius: '4px',
-    backgroundColor: '#e2e8f0',
-    color: '#334155',
+    borderRadius: '1px',
+    backgroundColor: 'var(--border-light)',
+    color: 'var(--ink-dark)',
   },
   section: {
     marginBottom: '1.5rem',
   },
   sectionTitle: {
     fontSize: '1rem',
-    color: '#334155',
+    color: 'var(--ink-dark)',
     margin: '0 0 0.75rem 0',
     paddingBottom: '0.4rem',
-    borderBottom: '1px solid #e2e8f0',
+    borderBottom: '1px solid var(--border-light)',
+    fontVariant: 'small-caps',
+    letterSpacing: '0.08em',
   },
   sectionHeaderBtn: {
     display: 'flex',
     alignItems: 'center',
     gap: '0.5rem',
     fontSize: '1rem',
-    color: '#334155',
+    color: 'var(--ink-dark)',
     backgroundColor: 'transparent',
     border: 'none',
     cursor: 'pointer',
     padding: '0 0 0.4rem 0',
     marginBottom: '0.75rem',
     paddingBottom: '0.4rem',
-    borderBottom: '1px solid #e2e8f0',
+    borderBottom: '1px solid var(--border-light)',
     fontWeight: 500,
     width: '100%',
     textAlign: 'left',
+    fontVariant: 'small-caps',
+    letterSpacing: '0.08em',
+    fontFamily: 'var(--font-body)',
   },
   chevron: {
     display: 'inline-block',
     fontSize: '0.75rem',
     minWidth: '1rem',
-    color: '#64748b',
+    color: 'var(--ink-light)',
   },
   summaryText: {
     margin: 0,
     fontSize: '0.95rem',
-    color: '#334155',
+    color: 'var(--ink-dark)',
     lineHeight: 1.6,
     whiteSpace: 'pre-wrap',
   },
   muted: {
-    color: '#94a3b8',
+    color: 'var(--ink-faint)',
     fontSize: '0.875rem',
   },
   editArea: {
@@ -981,12 +1026,12 @@ const styles = {
   },
   textarea: {
     padding: '0.75rem',
-    borderRadius: '8px',
-    border: '1px solid #cbd5e1',
+    borderRadius: '2px',
+    border: '1px solid var(--border-medium)',
     fontSize: '0.9rem',
     outline: 'none',
     resize: 'vertical',
-    fontFamily: 'inherit',
+    fontFamily: 'var(--font-body)',
     lineHeight: 1.5,
   },
   editActions: {
@@ -995,21 +1040,23 @@ const styles = {
   },
   button: {
     padding: '0.5rem 1rem',
-    borderRadius: '8px',
-    backgroundColor: '#2563eb',
-    color: '#fff',
+    borderRadius: '2px',
+    backgroundColor: 'var(--accent)',
+    color: 'var(--card-bg)',
     border: 'none',
     fontSize: '0.875rem',
     cursor: 'pointer',
+    fontFamily: 'var(--font-body)',
   },
   buttonOutline: {
     padding: '0.5rem 1rem',
-    borderRadius: '8px',
+    borderRadius: '2px',
     backgroundColor: 'transparent',
-    color: '#64748b',
-    border: '1px solid #cbd5e1',
+    color: 'var(--ink-light)',
+    border: '1px solid var(--border-medium)',
     fontSize: '0.875rem',
     cursor: 'pointer',
+    fontFamily: 'var(--font-body)',
   },
   summaryActions: {
     display: 'flex',
@@ -1018,60 +1065,64 @@ const styles = {
   },
   buttonSmall: {
     padding: '0.35rem 0.75rem',
-    borderRadius: '6px',
+    borderRadius: '2px',
     backgroundColor: 'transparent',
-    color: '#2563eb',
-    border: '1px solid #2563eb',
+    color: 'var(--accent)',
+    border: '1px solid var(--accent)',
     fontSize: '0.8rem',
     cursor: 'pointer',
+    fontFamily: 'var(--font-body)',
   },
   recapBtn: {
     padding: '0.35rem 0.75rem',
-    borderRadius: '6px',
-    backgroundColor: '#7c3aed',
-    color: '#fff',
+    borderRadius: '2px',
+    backgroundColor: 'var(--accent)',
+    color: 'var(--card-bg)',
     border: 'none',
     fontSize: '0.8rem',
     cursor: 'pointer',
+    fontFamily: 'var(--font-body)',
   },
   prepBtn: {
     padding: '0.5rem 1rem',
-    borderRadius: '8px',
-    backgroundColor: '#059669',
-    color: '#fff',
+    borderRadius: '2px',
+    backgroundColor: 'var(--success)',
+    color: 'var(--card-bg)',
     border: 'none',
     fontSize: '0.875rem',
     cursor: 'pointer',
+    fontFamily: 'var(--font-body)',
   },
   prepPreview: {
     padding: '1rem',
-    borderRadius: '8px',
-    backgroundColor: '#ecfdf5',
-    border: '1px solid #a7f3d0',
+    borderRadius: '3px',
+    backgroundColor: 'var(--success-bg)',
+    border: '1px solid var(--border-light)',
   },
   prepContent: {
     fontSize: '0.9rem',
-    color: '#334155',
+    color: 'var(--ink-dark)',
     lineHeight: 1.7,
     whiteSpace: 'pre-wrap',
   },
   recapPreview: {
     marginTop: '1rem',
     padding: '1rem',
-    borderRadius: '8px',
-    backgroundColor: '#f5f3ff',
-    border: '1px solid #ddd6fe',
+    borderRadius: '3px',
+    backgroundColor: 'var(--card-bg)',
+    border: '1px solid var(--border-light)',
   },
   recapLabel: {
     margin: '0 0 0.5rem 0',
     fontSize: '0.85rem',
     fontWeight: 600,
-    color: '#6d28d9',
+    color: 'var(--accent)',
+    fontFamily: 'var(--font-heading)',
   },
   noteCard: {
     padding: '0.75rem 1rem',
-    borderRadius: '8px',
-    backgroundColor: '#f8fafc',
+    borderRadius: '3px',
+    backgroundColor: 'var(--sidebar-bg)',
     marginBottom: '0.5rem',
   },
   noteMeta: {
@@ -1082,16 +1133,16 @@ const styles = {
   noteAuthor: {
     fontSize: '0.8rem',
     fontWeight: 600,
-    color: '#475569',
+    color: 'var(--ink-medium)',
   },
   noteDate: {
     fontSize: '0.75rem',
-    color: '#94a3b8',
+    color: 'var(--ink-faint)',
   },
   noteContent: {
     margin: 0,
     fontSize: '0.9rem',
-    color: '#334155',
+    color: 'var(--ink-dark)',
     lineHeight: 1.5,
     whiteSpace: 'pre-wrap',
   },
@@ -1103,19 +1154,19 @@ const styles = {
   },
   noteInput: {
     padding: '0.65rem 0.75rem',
-    borderRadius: '8px',
-    border: '1px solid #cbd5e1',
+    borderRadius: '2px',
+    border: '1px solid var(--border-medium)',
     fontSize: '0.9rem',
     outline: 'none',
     resize: 'vertical',
-    fontFamily: 'inherit',
+    fontFamily: 'var(--font-body)',
     lineHeight: 1.5,
   },
   prepItemCard: {
     padding: '0.6rem 0.75rem',
-    borderRadius: '6px',
-    backgroundColor: '#f0fdf4',
-    border: '1px solid #bbf7d0',
+    borderRadius: '2px',
+    backgroundColor: 'var(--success-bg)',
+    border: '1px solid var(--border-light)',
   },
   prepItemHeader: {
     display: 'flex',
@@ -1126,21 +1177,22 @@ const styles = {
     fontSize: '0.65rem',
     fontWeight: 600,
     padding: '0.1rem 0.35rem',
-    borderRadius: '4px',
-    backgroundColor: '#dcfce7',
-    color: '#166534',
-    textTransform: 'uppercase',
+    borderRadius: '1px',
+    backgroundColor: 'var(--success-bg)',
+    color: 'var(--success)',
+    fontVariant: 'small-caps',
+    letterSpacing: '0.05em',
   },
   prepItemName: {
     fontSize: '0.875rem',
     fontWeight: 600,
-    color: '#1e293b',
+    color: 'var(--ink-dark)',
   },
   prepItemRemove: {
     marginLeft: 'auto',
     background: 'none',
     border: 'none',
-    color: '#dc2626',
+    color: 'var(--danger)',
     fontSize: '1rem',
     cursor: 'pointer',
     lineHeight: 1,
@@ -1149,13 +1201,13 @@ const styles = {
   prepItemDesc: {
     margin: '0.2rem 0 0 0',
     fontSize: '0.8rem',
-    color: '#475569',
+    color: 'var(--ink-medium)',
     lineHeight: 1.4,
   },
   prepItemStats: {
     margin: '0.15rem 0 0 0',
     fontSize: '0.75rem',
-    color: '#059669',
+    color: 'var(--success)',
     fontFamily: 'monospace',
   },
   prepItemForm: {
@@ -1163,55 +1215,56 @@ const styles = {
     flexDirection: 'column',
     gap: '0.5rem',
     padding: '0.75rem',
-    backgroundColor: '#f8fafc',
-    borderRadius: '8px',
-    border: '1px solid #e2e8f0',
+    backgroundColor: 'var(--sidebar-bg)',
+    borderRadius: '2px',
+    border: '1px solid var(--border-light)',
   },
   prepItemSelect: {
     padding: '0.5rem',
-    borderRadius: '6px',
-    border: '1px solid #cbd5e1',
+    borderRadius: '2px',
+    border: '1px solid var(--border-medium)',
     fontSize: '0.8rem',
     outline: 'none',
-    fontFamily: 'inherit',
+    fontFamily: 'var(--font-body)',
   },
   lootForm: {
     display: 'flex',
     flexDirection: 'column',
     gap: '0.5rem',
     padding: '0.75rem',
-    backgroundColor: '#f8fafc',
-    borderRadius: '8px',
-    border: '1px solid #e2e8f0',
+    backgroundColor: 'var(--sidebar-bg)',
+    borderRadius: '2px',
+    border: '1px solid var(--border-light)',
     marginBottom: '0.75rem',
   },
   lootSelect: {
     padding: '0.5rem',
-    borderRadius: '6px',
-    border: '1px solid #cbd5e1',
+    borderRadius: '2px',
+    border: '1px solid var(--border-medium)',
     fontSize: '0.8rem',
     outline: 'none',
-    fontFamily: 'inherit',
-    backgroundColor: '#fff',
+    fontFamily: 'var(--font-body)',
+    backgroundColor: 'var(--card-bg)',
     flex: 1,
   },
   lootCard: {
     padding: '0.5rem 0.75rem',
-    borderRadius: '6px',
-    backgroundColor: '#f8fafc',
-    border: '1px solid #f1f5f9',
+    borderRadius: '2px',
+    backgroundColor: 'var(--sidebar-bg)',
+    border: '1px solid var(--border-light)',
   },
   lootCatBadge: {
     fontSize: '0.6rem',
     fontWeight: 600,
     padding: '0.1rem 0.35rem',
-    borderRadius: '3px',
-    textTransform: 'uppercase',
+    borderRadius: '1px',
+    fontVariant: 'small-caps',
+    letterSpacing: '0.05em',
   },
   lootRemoveBtn: {
     background: 'none',
     border: 'none',
-    color: '#94a3b8',
+    color: 'var(--ink-faint)',
     cursor: 'pointer',
     fontSize: '1rem',
     padding: '0 0.3rem',
@@ -1221,10 +1274,10 @@ const styles = {
 };
 
 const lootCatColors = {
-  gold: { bg: '#fef3c7', text: '#b45309' },
-  item: { bg: '#f1f5f9', text: '#475569' },
-  gem: { bg: '#ede9fe', text: '#6d28d9' },
-  art: { bg: '#fce7f3', text: '#be185d' },
-  magic_item: { bg: '#dbeafe', text: '#1d4ed8' },
-  other: { bg: '#f1f5f9', text: '#64748b' },
+  gold: { bg: 'var(--card-bg)', text: 'var(--sepia)' },
+  item: { bg: 'var(--sidebar-bg)', text: 'var(--ink-medium)' },
+  gem: { bg: 'var(--card-bg)', text: 'var(--accent)' },
+  art: { bg: 'var(--card-bg)', text: 'var(--sepia)' },
+  magic_item: { bg: 'var(--card-bg)', text: 'var(--accent)' },
+  other: { bg: 'var(--sidebar-bg)', text: 'var(--ink-light)' },
 };

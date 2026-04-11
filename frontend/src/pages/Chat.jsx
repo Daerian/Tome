@@ -68,32 +68,30 @@ export default function Chat({ campaignId, session, role }) {
     <div style={styles.container}>
       <div style={styles.messages}>
         {messages.length === 0 && (
-          <p style={styles.empty}>
-            {campaignId
-              ? 'Ask me about this campaign\u2019s sessions and lore...'
-              : 'Start a conversation...'}
-          </p>
+          <div style={styles.empty}>
+            <div style={styles.ornament}>── ✦ ──</div>
+            <p style={styles.emptyText}>
+              {campaignId
+                ? "Ask the Archive about this campaign\u2019s\nsessions, lore, and history."
+                : 'Start a conversation...'}
+            </p>
+            <div style={styles.ornament}>── ✦ ──</div>
+          </div>
         )}
         {messages.map((msg, i) => (
-          <div
-            key={i}
-            style={{
-              ...styles.bubble,
-              ...(msg.role === 'user' ? styles.user : styles.assistant),
-            }}
-          >
-            {msg.content}
+          <div key={i} style={styles.messageBlock}>
+            <div style={msg.role === 'user' ? styles.userLabel : styles.assistantLabel}>
+              {msg.role === 'user' ? 'You —' : 'Archive —'}
+            </div>
+            <div style={styles.messageText}>{msg.content}</div>
           </div>
         ))}
         {loading && (
-          <div
-            style={{
-              ...styles.bubble,
-              ...styles.assistant,
-              ...styles.thinking,
-            }}
-          >
-            Thinking...
+          <div style={styles.messageBlock}>
+            <div style={styles.assistantLabel}>Archive —</div>
+            <div style={{ ...styles.messageText, ...styles.thinking }}>
+              Thinking...
+            </div>
           </div>
         )}
         <div ref={bottomRef} />
@@ -114,7 +112,7 @@ export default function Chat({ campaignId, session, role }) {
           type="submit"
           disabled={loading || !input.trim()}
         >
-          Send
+          Send →
         </button>
       </form>
     </div>
@@ -137,56 +135,86 @@ const styles = {
     overflowY: 'auto',
     display: 'flex',
     flexDirection: 'column',
-    gap: '0.75rem',
+    gap: '0',
     paddingBottom: '1rem',
   },
   empty: {
     textAlign: 'center',
-    color: '#888',
-    marginTop: '2rem',
+    marginTop: '3rem',
   },
-  bubble: {
-    padding: '0.75rem 1rem',
-    borderRadius: '12px',
-    maxWidth: '80%',
+  ornament: {
+    color: 'var(--ink-faint)',
+    fontFamily: 'var(--font-body)',
+    fontSize: '1rem',
+    margin: '0.5rem 0',
+  },
+  emptyText: {
+    color: 'var(--ink-faint)',
+    fontFamily: 'var(--font-body)',
+    fontStyle: 'italic',
+    fontSize: '1rem',
+    lineHeight: 1.7,
+    whiteSpace: 'pre-line',
+    margin: 0,
+  },
+  messageBlock: {
+    padding: '0.75rem 0',
+    borderBottom: '1px solid var(--hover-bg)',
+  },
+  userLabel: {
+    fontFamily: 'var(--font-body)',
+    fontVariant: 'small-caps',
+    fontWeight: 600,
+    fontSize: '0.85rem',
+    color: 'var(--accent)',
+    marginBottom: '0.25rem',
+  },
+  assistantLabel: {
+    fontFamily: 'var(--font-body)',
+    fontVariant: 'small-caps',
+    fontWeight: 600,
+    fontSize: '0.85rem',
+    color: 'var(--success)',
+    marginBottom: '0.25rem',
+  },
+  messageText: {
+    fontFamily: 'var(--font-body)',
+    fontSize: '1rem',
+    lineHeight: 1.7,
+    color: 'var(--ink-medium)',
+    paddingLeft: '1rem',
     whiteSpace: 'pre-wrap',
-    lineHeight: '1.5',
-  },
-  user: {
-    alignSelf: 'flex-end',
-    backgroundColor: '#2563eb',
-    color: '#fff',
-  },
-  assistant: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#f1f5f9',
-    color: '#1e293b',
   },
   thinking: {
-    color: '#94a3b8',
+    color: 'var(--ink-faint)',
     fontStyle: 'italic',
   },
   form: {
     display: 'flex',
     gap: '0.5rem',
     paddingTop: '0.5rem',
-    borderTop: '1px solid #e2e8f0',
+    borderTop: '2px solid var(--border-medium)',
   },
   input: {
     flex: 1,
-    padding: '0.75rem 1rem',
-    borderRadius: '8px',
-    border: '1px solid #cbd5e1',
+    padding: '0.75rem 0',
+    border: 'none',
+    borderBottom: '1px solid var(--border-medium)',
+    backgroundColor: 'transparent',
+    fontFamily: 'var(--font-body)',
     fontSize: '1rem',
+    color: 'var(--ink-medium)',
     outline: 'none',
   },
   button: {
-    padding: '0.75rem 1.25rem',
-    borderRadius: '8px',
-    backgroundColor: '#2563eb',
-    color: '#fff',
+    padding: '0.75rem 0',
+    backgroundColor: 'transparent',
+    color: 'var(--accent)',
     border: 'none',
-    fontSize: '1rem',
+    borderBottom: '1px solid var(--accent)',
+    fontFamily: 'var(--font-body)',
+    fontVariant: 'small-caps',
+    fontSize: '0.9rem',
     cursor: 'pointer',
   },
 };
