@@ -170,9 +170,7 @@ def _is_magic(item: dict) -> bool:
         return True
     if item.get("wondrous"):
         return True
-    if item.get("reqAttune"):
-        return True
-    return False
+    return bool(item.get("reqAttune"))
 
 
 def _format_item(item: dict) -> dict:
