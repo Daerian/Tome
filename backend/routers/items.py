@@ -92,7 +92,15 @@ RARITY_MAP = {
 }
 
 # Rarities that indicate a magic item
-_MAGIC_RARITIES = {"common", "uncommon", "rare", "very rare", "legendary", "artifact", "varies"}
+_MAGIC_RARITIES = {
+    "common",
+    "uncommon",
+    "rare",
+    "very rare",
+    "legendary",
+    "artifact",
+    "varies",
+}
 
 # ── Cache ─────────────────────────────────────────────────────────────────────
 
@@ -233,9 +241,7 @@ async def search_items(
     magic_items = [i for i in all_items if _is_magic(i)]
 
     # Build the source list from all magic items (used by the filter UI)
-    source_codes = sorted(
-        {i.get("source", "") for i in magic_items if i.get("source")}
-    )
+    source_codes = sorted({i.get("source", "") for i in magic_items if i.get("source")})
     available_sources = [
         {"code": s, "name": SOURCE_MAP.get(s, s)} for s in source_codes
     ]

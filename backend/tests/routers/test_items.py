@@ -33,7 +33,9 @@ SAMPLE_ITEMS = [
         "source": "DMG",
         "rarity": "uncommon",
         "wondrous": True,
-        "entries": ["This bag has an interior space considerably larger than its outside dimensions."],
+        "entries": [
+            "This bag has an interior space considerably larger than its outside dimensions."
+        ],
     },
     {
         "name": "Ring of Protection",
@@ -41,7 +43,9 @@ SAMPLE_ITEMS = [
         "rarity": "rare",
         "type": "RG",
         "reqAttune": True,
-        "entries": ["You gain a +1 bonus to AC and saving throws while wearing this ring."],
+        "entries": [
+            "You gain a +1 bonus to AC and saving throws while wearing this ring."
+        ],
     },
     {
         "name": "Staff of the Magi",
@@ -56,7 +60,9 @@ SAMPLE_ITEMS = [
         "source": "DMG",
         "rarity": "common",
         "type": "P",
-        "entries": ["You regain {@dice 2d4 + 2} hit points when you drink this potion."],
+        "entries": [
+            "You regain {@dice 2d4 + 2} hit points when you drink this potion."
+        ],
     },
     {
         "name": "Cloak of Elvenkind",
@@ -64,7 +70,9 @@ SAMPLE_ITEMS = [
         "rarity": "uncommon",
         "wondrous": True,
         "reqAttune": "by a creature with no darkvision",
-        "entries": ["While you wear this cloak, Wisdom (Perception) checks made to see you have disadvantage."],
+        "entries": [
+            "While you wear this cloak, Wisdom (Perception) checks made to see you have disadvantage."
+        ],
     },
     {
         "name": "Cape of the Mountebank",
@@ -169,48 +177,94 @@ class TestIsMagic:
 
 class TestFormatItem:
     def test_very_rare_normalised_to_underscore(self):
-        item = {"name": "Dragon Scale Mail", "source": "DMG", "rarity": "very rare", "type": "A"}
+        item = {
+            "name": "Dragon Scale Mail",
+            "source": "DMG",
+            "rarity": "very rare",
+            "type": "A",
+        }
         result = _format_item(item)
         assert result["rarity"] == "very_rare"
 
     def test_wondrous_flag_sets_item_type(self):
-        item = {"name": "Bag of Holding", "source": "DMG", "rarity": "uncommon", "wondrous": True}
+        item = {
+            "name": "Bag of Holding",
+            "source": "DMG",
+            "rarity": "uncommon",
+            "wondrous": True,
+        }
         result = _format_item(item)
         assert result["item_type"] == "wondrous"
 
     def test_wondrous_overrides_type_code(self):
         # If both wondrous=True and a type code exist, wondrous wins
-        item = {"name": "X", "source": "DMG", "rarity": "rare", "wondrous": True, "type": "RG"}
+        item = {
+            "name": "X",
+            "source": "DMG",
+            "rarity": "rare",
+            "wondrous": True,
+            "type": "RG",
+        }
         result = _format_item(item)
         assert result["item_type"] == "wondrous"
 
     def test_type_code_ring(self):
-        item = {"name": "Ring of Protection", "source": "DMG", "rarity": "rare", "type": "RG"}
+        item = {
+            "name": "Ring of Protection",
+            "source": "DMG",
+            "rarity": "rare",
+            "type": "RG",
+        }
         result = _format_item(item)
         assert result["item_type"] == "ring"
 
     def test_type_code_staff(self):
-        item = {"name": "Staff of the Magi", "source": "DMG", "rarity": "legendary", "type": "ST"}
+        item = {
+            "name": "Staff of the Magi",
+            "source": "DMG",
+            "rarity": "legendary",
+            "type": "ST",
+        }
         result = _format_item(item)
         assert result["item_type"] == "staff"
 
     def test_type_code_wand(self):
-        item = {"name": "Wand of Fireballs", "source": "DMG", "rarity": "rare", "type": "WD"}
+        item = {
+            "name": "Wand of Fireballs",
+            "source": "DMG",
+            "rarity": "rare",
+            "type": "WD",
+        }
         result = _format_item(item)
         assert result["item_type"] == "wand"
 
     def test_type_code_potion(self):
-        item = {"name": "Potion of Healing", "source": "DMG", "rarity": "common", "type": "P"}
+        item = {
+            "name": "Potion of Healing",
+            "source": "DMG",
+            "rarity": "common",
+            "type": "P",
+        }
         result = _format_item(item)
         assert result["item_type"] == "potion"
 
     def test_type_code_scroll(self):
-        item = {"name": "Scroll of Fireball", "source": "DMG", "rarity": "uncommon", "type": "SC"}
+        item = {
+            "name": "Scroll of Fireball",
+            "source": "DMG",
+            "rarity": "uncommon",
+            "type": "SC",
+        }
         result = _format_item(item)
         assert result["item_type"] == "scroll"
 
     def test_type_code_weapon(self):
-        item = {"name": "Sword of Wounding", "source": "DMG", "rarity": "rare", "type": "M"}
+        item = {
+            "name": "Sword of Wounding",
+            "source": "DMG",
+            "rarity": "rare",
+            "type": "M",
+        }
         result = _format_item(item)
         assert result["item_type"] == "weapon"
 
@@ -220,19 +274,37 @@ class TestFormatItem:
         assert result["item_type"] == "other"
 
     def test_req_attune_bool(self):
-        item = {"name": "X", "source": "DMG", "rarity": "rare", "type": "RG", "reqAttune": True}
+        item = {
+            "name": "X",
+            "source": "DMG",
+            "rarity": "rare",
+            "type": "RG",
+            "reqAttune": True,
+        }
         result = _format_item(item)
         assert result["requires_attunement"] is True
 
     def test_req_attune_string(self):
-        item = {"name": "X", "source": "DMG", "rarity": "rare", "wondrous": True, "reqAttune": "by a spellcaster"}
+        item = {
+            "name": "X",
+            "source": "DMG",
+            "rarity": "rare",
+            "wondrous": True,
+            "reqAttune": "by a spellcaster",
+        }
         result = _format_item(item)
         assert result["requires_attunement"] is True
         # The attunement condition should appear in the description
         assert "by a spellcaster" in result["description"]
 
     def test_req_attune_false(self):
-        item = {"name": "X", "source": "DMG", "rarity": "uncommon", "wondrous": True, "reqAttune": False}
+        item = {
+            "name": "X",
+            "source": "DMG",
+            "rarity": "uncommon",
+            "wondrous": True,
+            "reqAttune": False,
+        }
         result = _format_item(item)
         assert result["requires_attunement"] is False
 
@@ -267,7 +339,9 @@ class TestFormatItem:
 @pytest.mark.asyncio
 async def test_search_returns_only_magic_items():
     with _mock_httpx(SAMPLE_ITEMS):
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             response = await client.get("/api/items/search?q=&limit=50")
 
     assert response.status_code == 200
@@ -280,7 +354,9 @@ async def test_search_returns_only_magic_items():
 @pytest.mark.asyncio
 async def test_search_by_name_substring():
     with _mock_httpx(SAMPLE_ITEMS):
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             response = await client.get("/api/items/search?q=cloak")
 
     assert response.status_code == 200
@@ -291,7 +367,9 @@ async def test_search_by_name_substring():
 @pytest.mark.asyncio
 async def test_search_by_name_case_insensitive():
     with _mock_httpx(SAMPLE_ITEMS):
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             response = await client.get("/api/items/search?q=BAG+OF")
 
     assert response.status_code == 200
@@ -302,7 +380,9 @@ async def test_search_by_name_case_insensitive():
 @pytest.mark.asyncio
 async def test_search_by_source_filter():
     with _mock_httpx(SAMPLE_ITEMS):
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             response = await client.get("/api/items/search?source=XGE&limit=50")
 
     assert response.status_code == 200
@@ -314,7 +394,9 @@ async def test_search_by_source_filter():
 @pytest.mark.asyncio
 async def test_search_source_filter_case_insensitive():
     with _mock_httpx(SAMPLE_ITEMS):
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             response = await client.get("/api/items/search?source=xge&limit=50")
 
     assert response.status_code == 200
@@ -325,7 +407,9 @@ async def test_search_source_filter_case_insensitive():
 @pytest.mark.asyncio
 async def test_search_combined_name_and_source():
     with _mock_httpx(SAMPLE_ITEMS):
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             response = await client.get("/api/items/search?q=ring&source=DMG")
 
     assert response.status_code == 200
@@ -336,7 +420,9 @@ async def test_search_combined_name_and_source():
 @pytest.mark.asyncio
 async def test_search_combined_no_match_returns_empty():
     with _mock_httpx(SAMPLE_ITEMS):
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             response = await client.get("/api/items/search?q=cloak&source=DMG")
 
     assert response.status_code == 200
@@ -346,7 +432,9 @@ async def test_search_combined_no_match_returns_empty():
 @pytest.mark.asyncio
 async def test_available_sources_always_returned():
     with _mock_httpx(SAMPLE_ITEMS):
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             response = await client.get("/api/items/search?q=bag")
 
     data = response.json()
@@ -361,7 +449,9 @@ async def test_available_sources_always_returned():
 async def test_available_sources_not_affected_by_filters():
     """Source list reflects ALL magic items, not just filtered results."""
     with _mock_httpx(SAMPLE_ITEMS):
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             response = await client.get("/api/items/search?source=XGE")
 
     data = response.json()
@@ -374,7 +464,9 @@ async def test_available_sources_not_affected_by_filters():
 @pytest.mark.asyncio
 async def test_available_sources_include_full_name():
     with _mock_httpx(SAMPLE_ITEMS):
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             response = await client.get("/api/items/search?q=bag")
 
     sources = {s["code"]: s["name"] for s in response.json()["available_sources"]}
@@ -385,7 +477,9 @@ async def test_available_sources_include_full_name():
 @pytest.mark.asyncio
 async def test_results_sorted_alphabetically():
     with _mock_httpx(SAMPLE_ITEMS):
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             response = await client.get("/api/items/search?source=DMG&limit=50")
 
     names = [r["name"] for r in response.json()["results"]]
@@ -395,7 +489,9 @@ async def test_results_sorted_alphabetically():
 @pytest.mark.asyncio
 async def test_limit_respected():
     with _mock_httpx(SAMPLE_ITEMS):
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             response = await client.get("/api/items/search?limit=2")
 
     assert len(response.json()["results"]) <= 2
@@ -404,7 +500,9 @@ async def test_limit_respected():
 @pytest.mark.asyncio
 async def test_limit_zero_returns_no_results_but_sources():
     with _mock_httpx(SAMPLE_ITEMS):
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             response = await client.get("/api/items/search?limit=0")
 
     data = response.json()
@@ -415,7 +513,9 @@ async def test_limit_zero_returns_no_results_but_sources():
 @pytest.mark.asyncio
 async def test_total_reflects_untruncated_count():
     with _mock_httpx(SAMPLE_ITEMS):
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             # Fetch with limit=1 — total should still be the real match count
             response = await client.get("/api/items/search?source=DMG&limit=1")
 
@@ -426,9 +526,18 @@ async def test_total_reflects_untruncated_count():
 
 @pytest.mark.asyncio
 async def test_rarity_normalised_in_response():
-    items = [{"name": "Dragon Scale Mail", "source": "DMG", "rarity": "very rare", "type": "A"}]
+    items = [
+        {
+            "name": "Dragon Scale Mail",
+            "source": "DMG",
+            "rarity": "very rare",
+            "type": "A",
+        }
+    ]
     with _mock_httpx(items):
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             response = await client.get("/api/items/search?q=dragon")
 
     result = response.json()["results"][0]
@@ -447,7 +556,9 @@ async def test_upstream_http_error_returns_empty_gracefully():
     mock_client.__aexit__ = AsyncMock(return_value=False)
 
     with patch("routers.items.httpx.AsyncClient", return_value=mock_client):
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             response = await client.get("/api/items/search?q=bag")
 
     assert response.status_code == 200
@@ -467,7 +578,9 @@ async def test_cache_prevents_duplicate_http_calls():
     mock_client.__aexit__ = AsyncMock(return_value=False)
 
     with patch("routers.items.httpx.AsyncClient", return_value=mock_client):
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             await client.get("/api/items/search?q=bag")
             await client.get("/api/items/search?q=ring")
 
@@ -477,7 +590,9 @@ async def test_cache_prevents_duplicate_http_calls():
 
 @pytest.mark.asyncio
 async def test_limit_above_max_returns_422():
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         response = await client.get("/api/items/search?limit=999")
 
     assert response.status_code == 422
@@ -486,7 +601,9 @@ async def test_limit_above_max_returns_422():
 @pytest.mark.asyncio
 async def test_empty_query_with_no_source_returns_all_magic():
     with _mock_httpx(SAMPLE_ITEMS):
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             response = await client.get("/api/items/search?limit=50")
 
     names = [r["name"] for r in response.json()["results"]]
