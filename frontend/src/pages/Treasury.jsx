@@ -7,8 +7,10 @@
  * Search and filter by rarity. DM or item creator can edit/delete.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+
+const API_URL = import.meta.env.VITE_API_URL;
 
 export default function Treasury({ campaignId, session, role }) {
   const [items, setItems] = useState([]);
@@ -34,6 +36,15 @@ export default function Treasury({ campaignId, session, role }) {
   });
   const [sessions, setSessions] = useState([]);
   const [creating, setCreating] = useState(false);
+
+  // 5e item search
+  const [itemSearch, setItemSearch] = useState('');
+  const [itemSearchSource, setItemSearchSource] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [availableSources, setAvailableSources] = useState([]);
+  const [searching, setSearching] = useState(false);
+  const [importedName, setImportedName] = useState('');
+  const searchDebounceRef = useRef(null);
 
   async function fetchAll() {
     const [iRes, cRes, sRes] = await Promise.all([
@@ -63,6 +74,91 @@ export default function Treasury({ campaignId, session, role }) {
     fetchAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [campaignId]);
+
+  // Pre-load available sources when the create form opens
+  useEffect(() => {
+    if (showCreate && availableSources.length === 0) {
+      fetch(`${API_URL}/api/items/search?q=a&limit=1`)
+        .then((r) => r.json())
+        .then((d) => setAvailableSources(d.available_sources || []))
+        .catch(() => {});
+    }
+    if (!showCreate) {
+      setItemSearch('');
+      setItemSearchSource('');
+      setSearchResults([]);
+      setImportedName('');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showCreate]);
+
+  // Debounced item search
+  useEffect(() => {
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    if (!itemSearch.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    searchDebounceRef.current = setTimeout(() => {
+      runItemSearch(itemSearch, itemSearchSource);
+    }, 350);
+    return () => clearTimeout(searchDebounceRef.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itemSearch, itemSearchSource]);
+
+  async function runItemSearch(q, source) {
+    setSearching(true);
+    try {
+      const params = new URLSearchParams({ q, limit: 15 });
+      if (source) params.set('source', source);
+      const res = await fetch(`${API_URL}/api/items/search?${params}`);
+      const data = await res.json();
+      setSearchResults(data.results || []);
+      if (data.available_sources?.length && availableSources.length === 0) {
+        setAvailableSources(data.available_sources);
+      }
+    } catch {
+      setSearchResults([]);
+    } finally {
+      setSearching(false);
+    }
+  }
+
+  function handleItemSearchInput(value) {
+    // Detect a pasted 5etools URL: https://5e.tools/items.html#cape+of+the+mountebank_dmg
+    const urlMatch = value.match(/5e\.tools\/items\.html#([^&\s]+)/i);
+    if (urlMatch) {
+      const hash = decodeURIComponent(urlMatch[1]).replace(/\+/g, ' ');
+      const lastUnderscore = hash.lastIndexOf('_');
+      if (lastUnderscore > 0) {
+        const name = hash.slice(0, lastUnderscore);
+        const source = hash.slice(lastUnderscore + 1).toUpperCase();
+        setItemSearch(name);
+        setItemSearchSource(source);
+        return; // useEffect will fire the search
+      }
+    }
+    setItemSearch(value);
+  }
+
+  function importSearchResult(result) {
+    setForm({
+      name: result.name,
+      description: result.description || '',
+      rarity: result.rarity,
+      item_type: result.item_type,
+      requires_attunement: result.requires_attunement,
+      attuned_to_id: '',
+      held_by_id: '',
+      properties: '',
+      is_cursed: false,
+      notes: `Source: ${result.source_full}`,
+      source_session_id: '',
+    });
+    setImportedName(result.name);
+    setSearchResults([]);
+    setItemSearch('');
+  }
 
   async function createItem() {
     if (!form.name.trim()) return;
@@ -151,7 +247,13 @@ export default function Treasury({ campaignId, session, role }) {
 
   if (loading)
     return (
-      <p style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
+      <p
+        style={{
+          textAlign: 'center',
+          padding: '2rem',
+          color: 'var(--ink-light)',
+        }}
+      >
         Loading treasury...
       </p>
     );
@@ -180,7 +282,7 @@ export default function Treasury({ campaignId, session, role }) {
           marginBottom: '1rem',
         }}
       >
-        <h3 style={{ margin: 0, color: '#1e293b' }}>Treasury</h3>
+        <h3 style={{ margin: 0, color: 'var(--ink-dark)' }}>Treasury</h3>
         <button style={s.addBtn} onClick={() => setShowCreate(!showCreate)}>
           {showCreate ? 'Cancel' : '+ Add Item'}
         </button>
@@ -219,6 +321,127 @@ export default function Treasury({ campaignId, session, role }) {
       {/* Create form */}
       {showCreate && (
         <div style={s.createForm}>
+          {/* ── 5e Database Search ─────────────────────────────────────── */}
+          <div style={s.searchSection}>
+            <p style={s.searchLabel}>
+              Search 5e Database
+              <span style={s.searchHint}>
+                — type a name or paste a 5e.tools URL
+              </span>
+            </p>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <input
+                style={{ ...s.input, flex: 1 }}
+                placeholder="e.g. Cape of the Mountebank or paste 5e.tools URL"
+                value={itemSearch}
+                onChange={(e) => handleItemSearchInput(e.target.value)}
+              />
+              <select
+                style={s.select}
+                value={itemSearchSource}
+                onChange={(e) => setItemSearchSource(e.target.value)}
+                title="Filter by sourcebook"
+              >
+                <option value="">All Sources</option>
+                {availableSources.map((src) => (
+                  <option key={src.code} value={src.code}>
+                    {src.code} — {src.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Search status */}
+            {searching && <p style={s.searchMuted}>Searching...</p>}
+
+            {/* Results */}
+            {searchResults.length > 0 && (
+              <div style={s.searchResults}>
+                {searchResults.map((r, i) => (
+                  <div key={i} style={s.searchResultRow}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.4rem',
+                        flex: 1,
+                        flexWrap: 'wrap',
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontWeight: 600,
+                          fontSize: '0.85rem',
+                          color: 'var(--ink-dark)',
+                        }}
+                      >
+                        {r.name}
+                      </span>
+                      <span
+                        style={{
+                          ...s.badge,
+                          color:
+                            rarityColors[r.rarity]?.text || 'var(--ink-light)',
+                        }}
+                      >
+                        {r.rarity.replace('_', ' ')}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: '0.7rem',
+                          color: 'var(--ink-faint)',
+                        }}
+                      >
+                        {r.item_type}
+                      </span>
+                      {r.requires_attunement && (
+                        <span
+                          style={{
+                            fontSize: '0.65rem',
+                            color: 'var(--accent)',
+                          }}
+                        >
+                          attunement
+                        </span>
+                      )}
+                      <span
+                        style={{
+                          fontSize: '0.7rem',
+                          color: 'var(--ink-faint)',
+                          marginLeft: 'auto',
+                        }}
+                      >
+                        {r.source}
+                      </span>
+                    </div>
+                    <button
+                      style={s.importBtn}
+                      onClick={() => importSearchResult(r)}
+                    >
+                      Import
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* No results */}
+            {!searching && itemSearch.trim() && searchResults.length === 0 && (
+              <p style={s.searchMuted}>
+                No results — fill the form manually below.
+              </p>
+            )}
+
+            {/* Import confirmation */}
+            {importedName && !itemSearch && (
+              <p style={{ ...s.searchMuted, color: 'var(--success)' }}>
+                ✓ Imported &ldquo;{importedName}&rdquo; — review and save below.
+              </p>
+            )}
+          </div>
+
+          <div style={s.searchDivider} />
+
           <input
             style={s.input}
             placeholder="Item name *"
@@ -283,7 +506,7 @@ export default function Treasury({ campaignId, session, role }) {
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.3rem',
-                color: '#475569',
+                color: 'var(--ink-medium)',
               }}
             >
               <input
@@ -300,7 +523,7 @@ export default function Treasury({ campaignId, session, role }) {
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.3rem',
-                color: '#475569',
+                color: 'var(--ink-medium)',
               }}
             >
               <input
@@ -355,7 +578,13 @@ export default function Treasury({ campaignId, session, role }) {
 
       {/* Item list */}
       {filtered.length === 0 ? (
-        <p style={{ color: '#94a3b8', textAlign: 'center', padding: '2rem' }}>
+        <p
+          style={{
+            color: 'var(--ink-faint)',
+            textAlign: 'center',
+            padding: '2rem',
+          }}
+        >
           {items.length === 0
             ? 'No items in the treasury yet.'
             : 'No matching items.'}
@@ -385,36 +614,41 @@ export default function Treasury({ campaignId, session, role }) {
                       flexWrap: 'wrap',
                     }}
                   >
-                    <span style={{ fontWeight: 600, color: '#1e293b' }}>
+                    <span style={{ fontWeight: 600, color: 'var(--ink-dark)' }}>
                       {item.name}
                     </span>
                     <span
                       style={{
                         ...s.badge,
-                        backgroundColor:
-                          rarityColors[item.rarity]?.bg || '#f1f5f9',
-                        color: rarityColors[item.rarity]?.text || '#475569',
+                        color:
+                          rarityColors[item.rarity]?.text ||
+                          'var(--ink-medium)',
+                        fontWeight: rarityColors[item.rarity]?.bold ? 700 : 600,
                       }}
                     >
                       {item.rarity.replace('_', ' ')}
                     </span>
-                    <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>
+                    <span
+                      style={{ fontSize: '0.7rem', color: 'var(--ink-faint)' }}
+                    >
                       {item.item_type}
                     </span>
                     {item.requires_attunement && (
-                      <span style={{ fontSize: '0.65rem', color: '#7c3aed' }}>
-                        attunement
+                      <span
+                        style={{ fontSize: '0.65rem', color: 'var(--accent)' }}
+                      >
+                        *
                       </span>
                     )}
                     {item.is_cursed && (
                       <span
                         style={{
                           fontSize: '0.65rem',
-                          color: '#dc2626',
+                          color: 'var(--danger)',
                           fontWeight: 600,
                         }}
                       >
-                        CURSED
+                        †
                       </span>
                     )}
                   </div>
@@ -423,7 +657,7 @@ export default function Treasury({ campaignId, session, role }) {
                       style={{
                         margin: '0.25rem 0 0',
                         fontSize: '0.8rem',
-                        color: '#64748b',
+                        color: 'var(--ink-light)',
                       }}
                     >
                       {item.description.slice(0, 100)}
@@ -431,7 +665,9 @@ export default function Treasury({ campaignId, session, role }) {
                     </p>
                   )}
                   {holder && (
-                    <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                    <span
+                      style={{ fontSize: '0.75rem', color: 'var(--ink-light)' }}
+                    >
                       Held by: {holder.name}
                     </span>
                   )}
@@ -517,7 +753,9 @@ function ItemDetail({
             }}
           >
             <div>
-              <h3 style={{ margin: 0, color: '#1e293b' }}>{item.name}</h3>
+              <h3 style={{ margin: 0, color: 'var(--ink-dark)' }}>
+                {item.name}
+              </h3>
               <div
                 style={{
                   display: 'flex',
@@ -529,8 +767,8 @@ function ItemDetail({
                 <span
                   style={{
                     ...s.badge,
-                    backgroundColor: rarityColors[item.rarity]?.bg,
                     color: rarityColors[item.rarity]?.text,
+                    fontWeight: rarityColors[item.rarity]?.bold ? 700 : 600,
                   }}
                 >
                   {item.rarity.replace('_', ' ')}
@@ -538,8 +776,7 @@ function ItemDetail({
                 <span
                   style={{
                     ...s.badge,
-                    backgroundColor: '#f1f5f9',
-                    color: '#475569',
+                    color: 'var(--ink-medium)',
                   }}
                 >
                   {item.item_type}
@@ -548,22 +785,20 @@ function ItemDetail({
                   <span
                     style={{
                       ...s.badge,
-                      backgroundColor: '#ede9fe',
-                      color: '#7c3aed',
+                      color: 'var(--accent)',
                     }}
                   >
-                    requires attunement
+                    requires attunement *
                   </span>
                 )}
                 {item.is_cursed && (
                   <span
                     style={{
                       ...s.badge,
-                      backgroundColor: '#fef2f2',
-                      color: '#dc2626',
+                      color: 'var(--danger)',
                     }}
                   >
-                    cursed
+                    cursed †
                   </span>
                 )}
               </div>
@@ -583,7 +818,7 @@ function ItemDetail({
           {item.description && (
             <p
               style={{
-                color: '#334155',
+                color: 'var(--ink-dark)',
                 fontSize: '0.875rem',
                 lineHeight: 1.6,
                 marginTop: '1rem',
@@ -599,19 +834,21 @@ function ItemDetail({
               style={{
                 marginTop: '0.75rem',
                 padding: '0.75rem',
-                backgroundColor: '#f0f9ff',
-                borderRadius: '8px',
-                border: '1px solid #bae6fd',
+                backgroundColor: 'var(--card-bg)',
+                borderRadius: '3px',
+                border: '1px solid var(--border-light)',
               }}
             >
-              <strong style={{ fontSize: '0.8rem', color: '#0369a1' }}>
+              <strong
+                style={{ fontSize: '0.8rem', color: 'var(--accent-deep)' }}
+              >
                 Properties
               </strong>
               <p
                 style={{
                   margin: '0.25rem 0 0',
                   fontSize: '0.8rem',
-                  color: '#0c4a6e',
+                  color: 'var(--ink-dark)',
                   whiteSpace: 'pre-wrap',
                 }}
               >
@@ -627,25 +864,29 @@ function ItemDetail({
               flexDirection: 'column',
               gap: '0.3rem',
               fontSize: '0.8rem',
-              color: '#64748b',
+              color: 'var(--ink-light)',
             }}
           >
             {holder && (
               <span>
                 Held by:{' '}
-                <strong style={{ color: '#334155' }}>{holder.name}</strong>
+                <strong style={{ color: 'var(--ink-dark)' }}>
+                  {holder.name}
+                </strong>
               </span>
             )}
             {attunedTo && (
               <span>
                 Attuned to:{' '}
-                <strong style={{ color: '#334155' }}>{attunedTo.name}</strong>
+                <strong style={{ color: 'var(--ink-dark)' }}>
+                  {attunedTo.name}
+                </strong>
               </span>
             )}
             {sourceSession && (
               <span>
                 Found in:{' '}
-                <strong style={{ color: '#334155' }}>
+                <strong style={{ color: 'var(--ink-dark)' }}>
                   Session {sourceSession.session_number}
                   {sourceSession.title ? `: ${sourceSession.title}` : ''}
                 </strong>
@@ -658,19 +899,19 @@ function ItemDetail({
               style={{
                 marginTop: '0.75rem',
                 padding: '0.75rem',
-                backgroundColor: '#fefce8',
-                borderRadius: '8px',
-                border: '1px solid #fef08a',
+                backgroundColor: 'var(--card-bg)',
+                borderRadius: '3px',
+                border: '1px solid var(--gold)',
               }}
             >
-              <strong style={{ fontSize: '0.8rem', color: '#854d0e' }}>
+              <strong style={{ fontSize: '0.8rem', color: 'var(--sepia)' }}>
                 Notes
               </strong>
               <p
                 style={{
                   margin: '0.25rem 0 0',
                   fontSize: '0.8rem',
-                  color: '#713f12',
+                  color: 'var(--sepia)',
                   whiteSpace: 'pre-wrap',
                 }}
               >
@@ -751,7 +992,7 @@ function ItemDetail({
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.3rem',
-                color: '#475569',
+                color: 'var(--ink-medium)',
               }}
             >
               <input
@@ -771,7 +1012,7 @@ function ItemDetail({
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.3rem',
-                color: '#475569',
+                color: 'var(--ink-medium)',
               }}
             >
               <input
@@ -855,123 +1096,175 @@ function ItemDetail({
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 const rarityColors = {
-  common: { bg: '#f1f5f9', text: '#475569' },
-  uncommon: { bg: '#dcfce7', text: '#15803d' },
-  rare: { bg: '#dbeafe', text: '#1d4ed8' },
-  very_rare: { bg: '#ede9fe', text: '#6d28d9' },
-  legendary: { bg: '#fef3c7', text: '#b45309' },
-  artifact: { bg: '#fef2f2', text: '#dc2626' },
+  common: { text: 'var(--ink-light)' },
+  uncommon: { text: 'var(--success)' },
+  rare: { text: 'var(--accent)' },
+  very_rare: { text: 'var(--accent-deep)' },
+  legendary: { text: 'var(--gold)' },
+  artifact: { text: 'var(--accent)', bold: true },
 };
 
 const s = {
   addBtn: {
     padding: '0.35rem 0.75rem',
-    borderRadius: '6px',
-    backgroundColor: '#2563eb',
+    borderRadius: '2px',
+    backgroundColor: 'var(--accent)',
     color: '#fff',
     border: 'none',
     fontSize: '0.8rem',
     cursor: 'pointer',
-    fontFamily: 'inherit',
+    fontFamily: 'var(--font-body)',
   },
   backBtn: {
     background: 'none',
     border: 'none',
-    color: '#2563eb',
+    color: 'var(--accent)',
     cursor: 'pointer',
     fontSize: '0.85rem',
     padding: 0,
-    fontFamily: 'inherit',
+    fontFamily: 'var(--font-body)',
   },
   editBtn: {
     padding: '0.3rem 0.6rem',
-    borderRadius: '6px',
+    borderRadius: '2px',
     backgroundColor: 'transparent',
-    border: '1px solid #cbd5e1',
-    color: '#475569',
+    border: '1px solid var(--border-medium)',
+    color: 'var(--ink-medium)',
     fontSize: '0.75rem',
     cursor: 'pointer',
-    fontFamily: 'inherit',
+    fontFamily: 'var(--font-body)',
   },
   delBtn: {
     padding: '0.3rem 0.6rem',
-    borderRadius: '6px',
+    borderRadius: '2px',
     backgroundColor: 'transparent',
-    border: '1px solid #fca5a5',
-    color: '#dc2626',
+    border: '1px solid var(--danger)',
+    color: 'var(--danger)',
     fontSize: '0.75rem',
     cursor: 'pointer',
-    fontFamily: 'inherit',
+    fontFamily: 'var(--font-body)',
   },
   cancelBtn: {
     padding: '0.4rem 0.8rem',
-    borderRadius: '6px',
+    borderRadius: '2px',
     backgroundColor: 'transparent',
-    border: '1px solid #cbd5e1',
-    color: '#475569',
+    border: '1px solid var(--border-medium)',
+    color: 'var(--ink-medium)',
     fontSize: '0.8rem',
     cursor: 'pointer',
-    fontFamily: 'inherit',
+    fontFamily: 'var(--font-body)',
   },
   card: {
     padding: '0.75rem',
-    border: '1px solid #e2e8f0',
-    borderRadius: '8px',
+    borderBottom: '1px solid var(--border-light)',
     marginBottom: '0.5rem',
     cursor: 'pointer',
-    backgroundColor: '#fff',
+    backgroundColor: 'transparent',
   },
   createForm: {
     padding: '1rem',
-    border: '1px solid #e2e8f0',
-    borderRadius: '8px',
+    border: '1px solid var(--border-light)',
+    borderRadius: '3px',
     marginBottom: '1rem',
-    backgroundColor: '#f8fafc',
+    backgroundColor: 'var(--sidebar-bg)',
     display: 'flex',
     flexDirection: 'column',
     gap: '0.5rem',
   },
   input: {
     padding: '0.5rem',
-    border: '1px solid #cbd5e1',
-    borderRadius: '6px',
+    border: '1px solid var(--border-medium)',
+    borderRadius: '2px',
     fontSize: '0.85rem',
-    fontFamily: 'inherit',
+    fontFamily: 'var(--font-body)',
+    color: 'var(--ink-medium)',
     width: '100%',
     boxSizing: 'border-box',
   },
   textarea: {
     padding: '0.5rem',
-    border: '1px solid #cbd5e1',
-    borderRadius: '6px',
+    border: '1px solid var(--border-medium)',
+    borderRadius: '2px',
     fontSize: '0.85rem',
-    fontFamily: 'inherit',
+    fontFamily: 'var(--font-body)',
+    color: 'var(--ink-medium)',
     width: '100%',
     boxSizing: 'border-box',
     resize: 'vertical',
   },
   select: {
     padding: '0.5rem',
-    border: '1px solid #cbd5e1',
-    borderRadius: '6px',
+    border: '1px solid var(--border-medium)',
+    borderRadius: '2px',
     fontSize: '0.85rem',
-    fontFamily: 'inherit',
-    backgroundColor: '#fff',
+    fontFamily: 'var(--font-body)',
+    backgroundColor: 'var(--card-bg)',
   },
   saveBtn: {
     padding: '0.4rem 0.8rem',
-    borderRadius: '6px',
-    backgroundColor: '#2563eb',
+    borderRadius: '2px',
+    backgroundColor: 'var(--accent)',
     color: '#fff',
     border: 'none',
     fontSize: '0.8rem',
     cursor: 'pointer',
-    fontFamily: 'inherit',
+    fontFamily: 'var(--font-body)',
   },
   badge: {
     fontSize: '0.65rem',
     fontWeight: 600,
     padding: '0.15rem 0.4rem',
-    borderRadius: '4px',
+    borderRadius: '1px',
+  },
+  searchSection: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.4rem',
+  },
+  searchLabel: {
+    margin: 0,
+    fontSize: '0.8rem',
+    fontWeight: 600,
+    color: 'var(--ink-dark)',
+    fontFamily: 'var(--font-body)',
+  },
+  searchHint: {
+    fontWeight: 400,
+    color: 'var(--ink-faint)',
+    marginLeft: '0.25rem',
+  },
+  searchResults: {
+    border: '1px solid var(--border-light)',
+    borderRadius: '2px',
+    overflow: 'hidden',
+  },
+  searchResultRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    padding: '0.4rem 0.6rem',
+    borderBottom: '1px solid var(--border-light)',
+    backgroundColor: 'var(--card-bg)',
+  },
+  searchMuted: {
+    margin: 0,
+    fontSize: '0.75rem',
+    color: 'var(--ink-faint)',
+    fontFamily: 'var(--font-body)',
+  },
+  searchDivider: {
+    borderTop: '1px solid var(--border-light)',
+    margin: '0.25rem 0',
+  },
+  importBtn: {
+    padding: '0.2rem 0.55rem',
+    borderRadius: '2px',
+    backgroundColor: 'var(--accent)',
+    color: '#fff',
+    border: 'none',
+    fontSize: '0.72rem',
+    cursor: 'pointer',
+    fontFamily: 'var(--font-body)',
+    flexShrink: 0,
   },
 };

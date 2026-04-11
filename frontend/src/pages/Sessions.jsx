@@ -168,7 +168,7 @@ export default function Sessions({ campaignId, session, role }) {
                 <span
                   style={{
                     ...styles.statusBadge,
-                    backgroundColor: statusColors[s.status] || '#e2e8f0',
+                    color: statusColors[s.status] || 'var(--ink-faint)',
                   }}
                 >
                   {s.status}
@@ -194,10 +194,10 @@ export default function Sessions({ campaignId, session, role }) {
 }
 
 const statusColors = {
-  planned: '#dbeafe',
-  in_progress: '#fef3c7',
-  completed: '#d1fae5',
-  cancelled: '#fee2e2',
+  planned: 'var(--sepia)',
+  in_progress: 'var(--accent)',
+  completed: 'var(--success)',
+  cancelled: 'var(--ink-faint)',
 };
 
 const styles = {
@@ -215,16 +215,18 @@ const styles = {
   title: {
     margin: 0,
     fontSize: '1.25rem',
-    color: '#1e293b',
+    color: 'var(--ink-dark)',
+    fontFamily: 'var(--font-heading)',
   },
   button: {
     padding: '0.5rem 1rem',
-    borderRadius: '8px',
-    backgroundColor: '#2563eb',
+    borderRadius: '2px',
+    backgroundColor: 'var(--accent)',
     color: '#fff',
     border: 'none',
     fontSize: '0.875rem',
     cursor: 'pointer',
+    fontFamily: 'var(--font-body)',
   },
   createForm: {
     display: 'flex',
@@ -234,35 +236,41 @@ const styles = {
   },
   input: {
     padding: '0.6rem 0.75rem',
-    borderRadius: '8px',
-    border: '1px solid #cbd5e1',
+    borderRadius: '2px',
+    border: '1px solid var(--border-medium)',
+    backgroundColor: 'var(--card-bg)',
     fontSize: '0.9rem',
     outline: 'none',
+    fontFamily: 'var(--font-body)',
+    color: 'var(--ink-medium)',
   },
   prepNotesInput: {
     padding: '0.6rem 0.75rem',
-    borderRadius: '8px',
-    border: '1px solid #cbd5e1',
+    borderRadius: '2px',
+    border: '1px solid var(--border-medium)',
+    backgroundColor: 'var(--card-bg)',
     fontSize: '0.85rem',
     outline: 'none',
     resize: 'vertical',
-    fontFamily: 'inherit',
+    fontFamily: 'var(--font-body)',
+    color: 'var(--ink-medium)',
     lineHeight: 1.5,
   },
   muted: {
-    color: '#94a3b8',
+    color: 'var(--ink-faint)',
     fontSize: '0.9rem',
   },
   empty: {
     textAlign: 'center',
     padding: '3rem 1rem',
-    backgroundColor: '#f8fafc',
-    borderRadius: '12px',
-    border: '1px dashed #cbd5e1',
+    backgroundColor: 'var(--card-bg)',
+    borderRadius: '3px',
+    border: '1px dashed var(--border-medium)',
   },
   emptyText: {
     margin: '0 0 0.25rem 0',
-    color: '#334155',
+    color: 'var(--ink-medium)',
+    fontStyle: 'italic',
   },
   list: {
     display: 'flex',
@@ -274,13 +282,12 @@ const styles = {
     flexDirection: 'column',
     gap: '0.25rem',
     padding: '1rem',
-    borderRadius: '10px',
-    border: '1px solid #e2e8f0',
-    backgroundColor: '#fff',
+    borderBottom: '1px solid var(--border-light)',
+    backgroundColor: 'transparent',
     textAlign: 'left',
     cursor: 'pointer',
     width: '100%',
-    fontFamily: 'inherit',
+    fontFamily: 'var(--font-body)',
   },
   cardTop: {
     display: 'flex',
@@ -290,30 +297,30 @@ const styles = {
   number: {
     fontSize: '0.75rem',
     fontWeight: 600,
-    color: '#64748b',
-    textTransform: 'uppercase',
+    color: 'var(--sepia)',
+    fontVariant: 'small-caps',
     letterSpacing: '0.02em',
   },
   statusBadge: {
     fontSize: '0.7rem',
     fontWeight: 500,
-    padding: '0.15rem 0.4rem',
-    borderRadius: '4px',
-    color: '#334155',
+    fontVariant: 'small-caps',
+    fontStyle: 'italic',
   },
   sessionTitle: {
     fontSize: '1rem',
     fontWeight: 500,
-    color: '#1e293b',
+    color: 'var(--ink-dark)',
+    fontFamily: 'var(--font-body)',
   },
   date: {
     fontSize: '0.8rem',
-    color: '#94a3b8',
+    color: 'var(--sepia)',
   },
   preview: {
     margin: 0,
     fontSize: '0.85rem',
-    color: '#64748b',
+    color: 'var(--ink-light)',
     lineHeight: 1.4,
   },
 };

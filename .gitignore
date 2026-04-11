@@ -26,9 +26,11 @@ __pycache__/
 *.pyo
 backend/venv/
 .pytest_cache/
+.ruff_cache/
 
 # Claude Code
 .claude/
+agents.md
 
 # Editor directories and files
 .DS_Store

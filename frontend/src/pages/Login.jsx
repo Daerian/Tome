@@ -10,6 +10,7 @@ export default function Login({ onGoogleSignIn }) {
     <div style={styles.container}>
       <h1 style={styles.title}>Tome</h1>
       <p style={styles.subtitle}>Your D&D Companion</p>
+      <div style={styles.ornament}>── ✦ ──</div>
       <button style={styles.button} onClick={onGoogleSignIn}>
         Sign in with Google
       </button>
@@ -24,26 +25,37 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
     height: '100vh',
-    gap: '1rem',
+    gap: '0.75rem',
+    backgroundColor: 'var(--page-bg)',
   },
   title: {
-    fontSize: '3rem',
+    fontSize: '3.5rem',
     margin: 0,
-    color: '#1e293b',
+    fontFamily: 'var(--font-heading)',
+    color: 'var(--accent-deep)',
   },
   subtitle: {
     fontSize: '1.2rem',
-    color: '#64748b',
+    fontFamily: 'var(--font-body)',
+    fontStyle: 'italic',
+    color: 'var(--ink-light)',
     margin: 0,
   },
+  ornament: {
+    color: 'var(--ink-faint)',
+    fontFamily: 'var(--font-body)',
+    fontSize: '1rem',
+    margin: '0.5rem 0',
+  },
   button: {
-    marginTop: '1.5rem',
+    marginTop: '0.5rem',
     padding: '0.75rem 1.5rem',
-    borderRadius: '8px',
-    backgroundColor: '#2563eb',
+    borderRadius: '2px',
+    backgroundColor: 'var(--accent)',
     color: '#fff',
     border: 'none',
-    fontSize: '1rem',
+    fontFamily: 'var(--font-body)',
+    fontSize: '1.05rem',
     cursor: 'pointer',
   },
 };

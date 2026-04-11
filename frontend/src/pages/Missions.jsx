@@ -154,7 +154,13 @@ export default function Missions({ campaignId, session, role }) {
 
   if (loading)
     return (
-      <p style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
+      <p
+        style={{
+          textAlign: 'center',
+          padding: '2rem',
+          color: 'var(--ink-light)',
+        }}
+      >
         Loading missions...
       </p>
     );
@@ -185,7 +191,15 @@ export default function Missions({ campaignId, session, role }) {
           marginBottom: '1rem',
         }}
       >
-        <h3 style={{ margin: 0, color: '#1e293b' }}>Missions</h3>
+        <h3
+          style={{
+            margin: 0,
+            color: 'var(--ink-dark)',
+            fontFamily: 'var(--font-heading)',
+          }}
+        >
+          Missions
+        </h3>
         {role === 'dm' && (
           <button style={s.addBtn} onClick={() => setShowCreate(!showCreate)}>
             {showCreate ? 'Cancel' : '+ New Mission'}
@@ -334,7 +348,13 @@ export default function Missions({ campaignId, session, role }) {
 
       {/* Mission list */}
       {filtered.length === 0 ? (
-        <p style={{ color: '#94a3b8', textAlign: 'center', padding: '2rem' }}>
+        <p
+          style={{
+            color: 'var(--ink-faint)',
+            textAlign: 'center',
+            padding: '2rem',
+          }}
+        >
           {filter === 'all' ? 'No missions yet.' : `No ${filter} missions.`}
         </p>
       ) : (
@@ -359,14 +379,13 @@ export default function Missions({ campaignId, session, role }) {
                       flexWrap: 'wrap',
                     }}
                   >
-                    <span style={{ fontWeight: 600, color: '#1e293b' }}>
+                    <span style={{ fontWeight: 600, color: 'var(--ink-dark)' }}>
                       {m.title}
                     </span>
                     <span
                       style={{
                         ...s.typeBadge,
-                        backgroundColor: typeColors[m.type]?.bg || '#f1f5f9',
-                        color: typeColors[m.type]?.text || '#475569',
+                        color: typeColors[m.type]?.text || 'var(--ink-medium)',
                       }}
                     >
                       {m.type}
@@ -374,9 +393,8 @@ export default function Missions({ campaignId, session, role }) {
                     <span
                       style={{
                         ...s.statusBadge,
-                        backgroundColor:
-                          statusColors[m.status]?.bg || '#f1f5f9',
-                        color: statusColors[m.status]?.text || '#475569',
+                        color:
+                          statusColors[m.status]?.text || 'var(--ink-medium)',
                       }}
                     >
                       {m.status}
@@ -385,8 +403,8 @@ export default function Missions({ campaignId, session, role }) {
                       <span
                         style={{
                           ...s.typeBadge,
-                          backgroundColor: '#fef2f2',
-                          color: '#dc2626',
+                          backgroundColor: 'var(--danger-bg)',
+                          color: 'var(--danger)',
                         }}
                       >
                         CRITICAL
@@ -398,7 +416,7 @@ export default function Missions({ campaignId, session, role }) {
                       style={{
                         margin: '0.25rem 0 0',
                         fontSize: '0.8rem',
-                        color: '#64748b',
+                        color: 'var(--ink-light)',
                         lineHeight: 1.4,
                       }}
                     >
@@ -417,7 +435,7 @@ export default function Missions({ campaignId, session, role }) {
                         display: 'flex',
                         justifyContent: 'space-between',
                         fontSize: '0.7rem',
-                        color: '#64748b',
+                        color: 'var(--ink-light)',
                         marginBottom: '0.2rem',
                       }}
                     >
@@ -432,7 +450,8 @@ export default function Missions({ campaignId, session, role }) {
                         style={{
                           ...s.progressFill,
                           width: `${pct}%`,
-                          backgroundColor: pct === 100 ? '#22c55e' : '#3b82f6',
+                          backgroundColor:
+                            pct === 100 ? 'var(--success)' : 'var(--accent)',
                         }}
                       />
                     </div>
@@ -643,7 +662,15 @@ function MissionDetail({
             }}
           >
             <div>
-              <h3 style={{ margin: 0, color: '#1e293b' }}>{mission.title}</h3>
+              <h3
+                style={{
+                  margin: 0,
+                  color: 'var(--ink-dark)',
+                  fontFamily: 'var(--font-heading)',
+                }}
+              >
+                {mission.title}
+              </h3>
               <div
                 style={{
                   display: 'flex',
@@ -655,7 +682,6 @@ function MissionDetail({
                 <span
                   style={{
                     ...s.typeBadge,
-                    backgroundColor: typeColors[mission.type]?.bg,
                     color: typeColors[mission.type]?.text,
                   }}
                 >
@@ -664,7 +690,6 @@ function MissionDetail({
                 <span
                   style={{
                     ...s.statusBadge,
-                    backgroundColor: statusColors[mission.status]?.bg,
                     color: statusColors[mission.status]?.text,
                   }}
                 >
@@ -673,8 +698,8 @@ function MissionDetail({
                 <span
                   style={{
                     ...s.typeBadge,
-                    backgroundColor: '#f8fafc',
-                    color: '#64748b',
+                    backgroundColor: 'var(--sidebar-bg)',
+                    color: 'var(--ink-light)',
                   }}
                 >
                   {mission.priority} priority
@@ -701,7 +726,7 @@ function MissionDetail({
                   display: 'flex',
                   justifyContent: 'space-between',
                   fontSize: '0.75rem',
-                  color: '#64748b',
+                  color: 'var(--ink-light)',
                   marginBottom: '0.25rem',
                 }}
               >
@@ -713,7 +738,8 @@ function MissionDetail({
                   style={{
                     ...s.progressFill,
                     width: `${pct}%`,
-                    backgroundColor: pct === 100 ? '#22c55e' : '#3b82f6',
+                    backgroundColor:
+                      pct === 100 ? 'var(--success)' : 'var(--accent)',
                   }}
                 />
               </div>
@@ -723,7 +749,7 @@ function MissionDetail({
           {mission.description && (
             <p
               style={{
-                color: '#334155',
+                color: 'var(--ink-dark)',
                 fontSize: '0.875rem',
                 lineHeight: 1.6,
                 marginTop: '1rem',
@@ -737,12 +763,14 @@ function MissionDetail({
             <p
               style={{
                 fontSize: '0.8rem',
-                color: '#64748b',
+                color: 'var(--ink-light)',
                 marginTop: '0.5rem',
               }}
             >
               Quest Giver:{' '}
-              <strong style={{ color: '#334155' }}>{questGiver.name}</strong>
+              <strong style={{ color: 'var(--ink-dark)' }}>
+                {questGiver.name}
+              </strong>
             </p>
           )}
 
@@ -754,12 +782,12 @@ function MissionDetail({
               style={{
                 marginTop: '0.75rem',
                 padding: '0.75rem',
-                backgroundColor: '#fefce8',
-                borderRadius: '8px',
-                border: '1px solid #fef08a',
+                backgroundColor: 'var(--card-bg)',
+                borderRadius: '2px',
+                border: '1px solid var(--gold)',
               }}
             >
-              <strong style={{ fontSize: '0.8rem', color: '#854d0e' }}>
+              <strong style={{ fontSize: '0.8rem', color: 'var(--gold)' }}>
                 Rewards
               </strong>
               {mission.reward_description && (
@@ -767,7 +795,7 @@ function MissionDetail({
                   style={{
                     margin: '0.25rem 0 0',
                     fontSize: '0.8rem',
-                    color: '#713f12',
+                    color: 'var(--gold)',
                   }}
                 >
                   {mission.reward_description}
@@ -777,12 +805,12 @@ function MissionDetail({
                 style={{ display: 'flex', gap: '1rem', marginTop: '0.25rem' }}
               >
                 {mission.reward_xp && (
-                  <span style={{ fontSize: '0.75rem', color: '#854d0e' }}>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--gold)' }}>
                     {mission.reward_xp} XP
                   </span>
                 )}
                 {mission.reward_gold && (
-                  <span style={{ fontSize: '0.75rem', color: '#854d0e' }}>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--gold)' }}>
                     {mission.reward_gold} GP
                   </span>
                 )}
@@ -795,19 +823,19 @@ function MissionDetail({
               style={{
                 marginTop: '0.75rem',
                 padding: '0.75rem',
-                backgroundColor: '#fef2f2',
-                borderRadius: '8px',
-                border: '1px solid #fecaca',
+                backgroundColor: 'var(--card-bg)',
+                borderRadius: '3px',
+                border: '1px solid var(--danger)',
               }}
             >
-              <strong style={{ fontSize: '0.8rem', color: '#991b1b' }}>
+              <strong style={{ fontSize: '0.8rem', color: 'var(--danger)' }}>
                 DM Notes
               </strong>
               <p
                 style={{
                   margin: '0.25rem 0 0',
                   fontSize: '0.8rem',
-                  color: '#7f1d1d',
+                  color: 'var(--danger)',
                   whiteSpace: 'pre-wrap',
                 }}
               >
@@ -942,7 +970,7 @@ function MissionDetail({
             marginBottom: '0.75rem',
           }}
         >
-          <h4 style={{ margin: 0, color: '#1e293b' }}>Stages</h4>
+          <h4 style={{ margin: 0, color: 'var(--ink-dark)' }}>Stages</h4>
           {role === 'dm' && (
             <button
               style={s.addBtn}
@@ -979,7 +1007,13 @@ function MissionDetail({
         )}
 
         {stages.length === 0 ? (
-          <p style={{ color: '#94a3b8', fontSize: '0.85rem' }}>
+          <p
+            style={{
+              color: 'var(--ink-faint)',
+              fontSize: '0.85rem',
+              fontStyle: 'italic',
+            }}
+          >
             No stages yet.
           </p>
         ) : (
@@ -1005,7 +1039,7 @@ function MissionDetail({
                       style={{
                         fontWeight: 600,
                         fontSize: '0.85rem',
-                        color: '#1e293b',
+                        color: 'var(--ink-dark)',
                       }}
                     >
                       Stage {idx + 1}: {stage.title}
@@ -1014,7 +1048,6 @@ function MissionDetail({
                       style={{
                         ...s.statusBadge,
                         marginLeft: '0.5rem',
-                        backgroundColor: statusColors[stage.status]?.bg,
                         color: statusColors[stage.status]?.text,
                         fontSize: '0.65rem',
                       }}
@@ -1059,7 +1092,7 @@ function MissionDetail({
                     style={{
                       margin: '0.25rem 0 0.5rem',
                       fontSize: '0.8rem',
-                      color: '#64748b',
+                      color: 'var(--ink-light)',
                     }}
                   >
                     {stage.description}
@@ -1087,7 +1120,9 @@ function MissionDetail({
                     />
                     <span
                       style={{
-                        color: obj.is_completed ? '#94a3b8' : '#334155',
+                        color: obj.is_completed
+                          ? 'var(--ink-faint)'
+                          : 'var(--ink-dark)',
                         textDecoration: obj.is_completed
                           ? 'line-through'
                           : 'none',
@@ -1095,7 +1130,12 @@ function MissionDetail({
                     >
                       {obj.description}
                       {obj.is_optional && (
-                        <span style={{ color: '#94a3b8', fontSize: '0.7rem' }}>
+                        <span
+                          style={{
+                            color: 'var(--ink-faint)',
+                            fontSize: '0.7rem',
+                          }}
+                        >
                           {' '}
                           (optional)
                         </span>
@@ -1127,32 +1167,32 @@ function MissionDetail({
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 const typeColors = {
-  main: { bg: '#ede9fe', text: '#6d28d9' },
-  side: { bg: '#e0f2fe', text: '#0369a1' },
-  personal: { bg: '#fce7f3', text: '#be185d' },
-  faction: { bg: '#d1fae5', text: '#047857' },
-  bounty: { bg: '#fef3c7', text: '#b45309' },
+  main: { text: 'var(--accent-deep)' },
+  side: { text: 'var(--accent)' },
+  personal: { text: 'var(--sepia)' },
+  faction: { text: 'var(--success)' },
+  bounty: { text: 'var(--gold)' },
 };
 
 const statusColors = {
-  available: { bg: '#e0f2fe', text: '#0369a1' },
-  active: { bg: '#dcfce7', text: '#15803d' },
-  completed: { bg: '#f0fdf4', text: '#166534' },
-  failed: { bg: '#fef2f2', text: '#dc2626' },
-  abandoned: { bg: '#f1f5f9', text: '#64748b' },
-  locked: { bg: '#f1f5f9', text: '#94a3b8' },
-  skipped: { bg: '#fefce8', text: '#a16207' },
+  available: { text: 'var(--accent)' },
+  active: { text: 'var(--success)' },
+  completed: { text: 'var(--success)' },
+  failed: { text: 'var(--danger)' },
+  abandoned: { text: 'var(--ink-light)' },
+  locked: { text: 'var(--ink-faint)' },
+  skipped: { text: 'var(--sepia)' },
 };
 
 function stageStatusColor(status) {
   const map = {
-    locked: '#cbd5e1',
-    active: '#3b82f6',
-    completed: '#22c55e',
-    failed: '#ef4444',
-    skipped: '#eab308',
+    locked: 'var(--border-medium)',
+    active: 'var(--accent)',
+    completed: 'var(--success)',
+    failed: 'var(--danger)',
+    skipped: 'var(--sepia)',
   };
-  return map[status] || '#cbd5e1';
+  return map[status] || 'var(--border-medium)';
 }
 
 // ─── Styles ─────────────────────────────────────────────────────────────────
@@ -1160,144 +1200,148 @@ function stageStatusColor(status) {
 const s = {
   addBtn: {
     padding: '0.35rem 0.75rem',
-    borderRadius: '6px',
-    backgroundColor: '#2563eb',
+    borderRadius: '2px',
+    backgroundColor: 'var(--accent)',
     color: '#fff',
     border: 'none',
     fontSize: '0.8rem',
     cursor: 'pointer',
-    fontFamily: 'inherit',
+    fontFamily: 'var(--font-body)',
   },
   backBtn: {
     background: 'none',
     border: 'none',
-    color: '#2563eb',
+    color: 'var(--accent)',
     cursor: 'pointer',
     fontSize: '0.85rem',
     padding: 0,
-    fontFamily: 'inherit',
+    fontFamily: 'var(--font-body)',
   },
   editBtn: {
     padding: '0.3rem 0.6rem',
-    borderRadius: '6px',
+    borderRadius: '2px',
     backgroundColor: 'transparent',
-    border: '1px solid #cbd5e1',
-    color: '#475569',
+    border: '1px solid var(--border-medium)',
+    color: 'var(--ink-medium)',
     fontSize: '0.75rem',
     cursor: 'pointer',
-    fontFamily: 'inherit',
+    fontFamily: 'var(--font-body)',
   },
   delBtn: {
     padding: '0.3rem 0.6rem',
-    borderRadius: '6px',
+    borderRadius: '2px',
     backgroundColor: 'transparent',
-    border: '1px solid #fca5a5',
-    color: '#dc2626',
+    border: '1px solid var(--danger)',
+    color: 'var(--danger)',
     fontSize: '0.75rem',
     cursor: 'pointer',
-    fontFamily: 'inherit',
+    fontFamily: 'var(--font-body)',
   },
   cancelBtn: {
     padding: '0.4rem 0.8rem',
-    borderRadius: '6px',
+    borderRadius: '2px',
     backgroundColor: 'transparent',
-    border: '1px solid #cbd5e1',
-    color: '#475569',
+    border: '1px solid var(--border-medium)',
+    color: 'var(--ink-medium)',
     fontSize: '0.8rem',
     cursor: 'pointer',
-    fontFamily: 'inherit',
+    fontFamily: 'var(--font-body)',
   },
   card: {
     padding: '0.75rem',
-    border: '1px solid #e2e8f0',
-    borderRadius: '8px',
+    borderBottom: '1px solid var(--border-light)',
     marginBottom: '0.5rem',
     cursor: 'pointer',
     transition: 'border-color 0.15s',
-    backgroundColor: '#fff',
+    backgroundColor: 'transparent',
   },
   createForm: {
     padding: '1rem',
-    border: '1px solid #e2e8f0',
-    borderRadius: '8px',
+    border: '1px solid var(--border-light)',
+    borderRadius: '3px',
     marginBottom: '1rem',
-    backgroundColor: '#f8fafc',
+    backgroundColor: 'var(--sidebar-bg)',
     display: 'flex',
     flexDirection: 'column',
     gap: '0.5rem',
   },
   input: {
     padding: '0.5rem',
-    border: '1px solid #cbd5e1',
-    borderRadius: '6px',
+    border: '1px solid var(--border-medium)',
+    borderRadius: '2px',
     fontSize: '0.85rem',
-    fontFamily: 'inherit',
+    fontFamily: 'var(--font-body)',
+    color: 'var(--ink-medium)',
     width: '100%',
     boxSizing: 'border-box',
   },
   textarea: {
     padding: '0.5rem',
-    border: '1px solid #cbd5e1',
-    borderRadius: '6px',
+    border: '1px solid var(--border-medium)',
+    borderRadius: '2px',
     fontSize: '0.85rem',
-    fontFamily: 'inherit',
+    fontFamily: 'var(--font-body)',
+    color: 'var(--ink-medium)',
     width: '100%',
     boxSizing: 'border-box',
     resize: 'vertical',
   },
   select: {
     padding: '0.5rem',
-    border: '1px solid #cbd5e1',
-    borderRadius: '6px',
+    border: '1px solid var(--border-medium)',
+    borderRadius: '2px',
     fontSize: '0.85rem',
-    fontFamily: 'inherit',
-    backgroundColor: '#fff',
+    fontFamily: 'var(--font-body)',
+    backgroundColor: 'var(--card-bg)',
   },
   saveBtn: {
     padding: '0.4rem 0.8rem',
-    borderRadius: '6px',
-    backgroundColor: '#2563eb',
+    borderRadius: '2px',
+    backgroundColor: 'var(--accent)',
     color: '#fff',
     border: 'none',
     fontSize: '0.8rem',
     cursor: 'pointer',
-    fontFamily: 'inherit',
+    fontFamily: 'var(--font-body)',
   },
   filter: {
     padding: '0.3rem 0.6rem',
-    borderRadius: '6px',
-    backgroundColor: '#f1f5f9',
-    border: '1px solid #e2e8f0',
-    color: '#64748b',
+    borderRadius: '2px',
+    backgroundColor: 'var(--sidebar-bg)',
+    border: '1px solid var(--border-light)',
+    color: 'var(--ink-light)',
     fontSize: '0.75rem',
     cursor: 'pointer',
-    fontFamily: 'inherit',
+    fontFamily: 'var(--font-body)',
+    fontVariant: 'small-caps',
   },
   filterActive: {
     padding: '0.3rem 0.6rem',
-    borderRadius: '6px',
-    backgroundColor: '#2563eb',
-    border: '1px solid #2563eb',
+    borderRadius: '2px',
+    backgroundColor: 'var(--accent)',
+    border: '1px solid var(--accent)',
     color: '#fff',
     fontSize: '0.75rem',
     cursor: 'pointer',
-    fontFamily: 'inherit',
+    fontFamily: 'var(--font-body)',
+    fontVariant: 'small-caps',
   },
   typeBadge: {
     fontSize: '0.65rem',
     fontWeight: 600,
-    padding: '0.15rem 0.4rem',
-    borderRadius: '4px',
+    fontVariant: 'small-caps',
+    fontFamily: 'var(--font-body)',
   },
   statusBadge: {
     fontSize: '0.65rem',
     fontWeight: 600,
-    padding: '0.15rem 0.4rem',
-    borderRadius: '4px',
+    fontVariant: 'small-caps',
+    fontStyle: 'italic',
+    fontFamily: 'var(--font-body)',
   },
   progressBg: {
     height: '6px',
-    backgroundColor: '#e2e8f0',
+    backgroundColor: 'var(--border-light)',
     borderRadius: '3px',
     overflow: 'hidden',
   },
@@ -1308,9 +1352,9 @@ const s = {
   },
   stageCard: {
     padding: '0.75rem',
-    backgroundColor: '#fff',
-    border: '1px solid #e2e8f0',
-    borderRadius: '8px',
+    backgroundColor: 'var(--card-bg)',
+    border: '1px solid var(--border-light)',
+    borderRadius: '3px',
     marginBottom: '0.5rem',
   },
 };

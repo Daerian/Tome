@@ -187,7 +187,13 @@ export default function Timeline({ campaignId, role }) {
 
   if (loading) {
     return (
-      <p style={{ textAlign: 'center', marginTop: '2rem', color: '#64748b' }}>
+      <p
+        style={{
+          textAlign: 'center',
+          marginTop: '2rem',
+          color: 'var(--ink-light)',
+        }}
+      >
         Loading...
       </p>
     );
@@ -310,15 +316,21 @@ export default function Timeline({ campaignId, role }) {
                   <div style={styles.eventHeader}>
                     <span
                       style={{
-                        ...styles.importanceDot,
-                        backgroundColor:
+                        ...styles.importanceMark,
+                        color:
                           ev.importance === 'major'
-                            ? '#ef4444'
+                            ? 'var(--accent-deep)'
                             : ev.importance === 'minor'
-                              ? '#f59e0b'
-                              : '#94a3b8',
+                              ? 'var(--ink-medium)'
+                              : 'var(--ink-faint)',
                       }}
-                    />
+                    >
+                      {ev.importance === 'major'
+                        ? '◆'
+                        : ev.importance === 'minor'
+                          ? '◇'
+                          : '·'}
+                    </span>
                     <span style={styles.eventDate}>{ev.in_world_date}</span>
                     <span style={styles.eventType}>
                       {ev.event_type.replace(/_/g, ' ')}
@@ -460,7 +472,7 @@ const styles = {
   subTabs: {
     display: 'flex',
     gap: 0,
-    borderBottom: '1px solid #e2e8f0',
+    borderBottom: '1px solid var(--border-light)',
     marginBottom: '1rem',
   },
   subTab: {
@@ -469,59 +481,64 @@ const styles = {
     border: 'none',
     borderBottom: '2px solid transparent',
     fontSize: '0.8rem',
-    color: '#64748b',
+    color: 'var(--ink-light)',
     cursor: 'pointer',
-    fontFamily: 'inherit',
+    fontFamily: 'var(--font-body)',
+    fontVariant: 'small-caps',
+    letterSpacing: '0.08em',
   },
   subTabActive: {
     padding: '0.5rem 1rem',
     background: 'none',
     border: 'none',
-    borderBottom: '2px solid #2563eb',
+    borderBottom: '2px solid var(--accent)',
     fontSize: '0.8rem',
-    color: '#2563eb',
+    color: 'var(--accent)',
     fontWeight: 600,
     cursor: 'pointer',
-    fontFamily: 'inherit',
+    fontFamily: 'var(--font-body)',
+    fontVariant: 'small-caps',
+    letterSpacing: '0.08em',
   },
   actions: {
     marginBottom: '1rem',
   },
   addBtn: {
     padding: '0.4rem 0.8rem',
-    borderRadius: '6px',
-    backgroundColor: '#2563eb',
-    color: '#fff',
+    borderRadius: '2px',
+    backgroundColor: 'var(--accent)',
+    color: 'var(--card-bg)',
     border: 'none',
     fontSize: '0.8rem',
     cursor: 'pointer',
+    fontFamily: 'var(--font-body)',
   },
   form: {
     display: 'flex',
     flexDirection: 'column',
     gap: '0.5rem',
     padding: '1rem',
-    backgroundColor: '#f8fafc',
-    borderRadius: '8px',
-    border: '1px solid #e2e8f0',
+    backgroundColor: 'var(--sidebar-bg)',
+    borderRadius: '2px',
+    border: '1px solid var(--border-light)',
     marginBottom: '1rem',
   },
   input: {
     padding: '0.5rem 0.75rem',
-    borderRadius: '6px',
-    border: '1px solid #cbd5e1',
+    borderRadius: '2px',
+    border: '1px solid var(--border-medium)',
     fontSize: '0.875rem',
     outline: 'none',
-    fontFamily: 'inherit',
+    fontFamily: 'var(--font-body)',
   },
   textarea: {
     padding: '0.5rem 0.75rem',
-    borderRadius: '6px',
-    border: '1px solid #cbd5e1',
+    borderRadius: '2px',
+    border: '1px solid var(--border-medium)',
     fontSize: '0.875rem',
     outline: 'none',
     resize: 'vertical',
-    fontFamily: 'inherit',
+    fontFamily: 'var(--font-body)',
   },
   row: {
     display: 'flex',
@@ -530,25 +547,26 @@ const styles = {
   select: {
     flex: 1,
     padding: '0.5rem',
-    borderRadius: '6px',
-    border: '1px solid #cbd5e1',
+    borderRadius: '2px',
+    border: '1px solid var(--border-medium)',
     fontSize: '0.8rem',
     outline: 'none',
-    fontFamily: 'inherit',
+    fontFamily: 'var(--font-body)',
   },
   submitBtn: {
     alignSelf: 'flex-start',
     padding: '0.5rem 1rem',
-    borderRadius: '6px',
-    backgroundColor: '#2563eb',
-    color: '#fff',
+    borderRadius: '2px',
+    backgroundColor: 'var(--accent)',
+    color: 'var(--card-bg)',
     border: 'none',
     fontSize: '0.8rem',
     cursor: 'pointer',
+    fontFamily: 'var(--font-body)',
   },
   empty: {
     textAlign: 'center',
-    color: '#94a3b8',
+    color: 'var(--ink-faint)',
     marginTop: '2rem',
     fontSize: '0.875rem',
   },
@@ -559,9 +577,9 @@ const styles = {
   },
   eventCard: {
     padding: '0.75rem 1rem',
-    borderRadius: '8px',
-    backgroundColor: '#f8fafc',
-    border: '1px solid #e2e8f0',
+    borderRadius: '2px',
+    backgroundColor: 'var(--sidebar-bg)',
+    border: '1px solid var(--border-light)',
   },
   eventHeader: {
     display: 'flex',
@@ -569,27 +587,29 @@ const styles = {
     gap: '0.5rem',
     marginBottom: '0.25rem',
   },
-  importanceDot: {
-    width: '8px',
-    height: '8px',
-    borderRadius: '50%',
+  importanceMark: {
+    fontSize: '0.85rem',
     flexShrink: 0,
+    lineHeight: 1,
   },
   eventDate: {
     fontSize: '0.75rem',
-    color: '#6d28d9',
+    color: 'var(--accent)',
     fontWeight: 600,
+    fontFamily: 'var(--font-body)',
   },
   eventType: {
     fontSize: '0.7rem',
-    color: '#94a3b8',
+    color: 'var(--ink-faint)',
     textTransform: 'capitalize',
+    fontVariant: 'small-caps',
+    letterSpacing: '0.08em',
   },
   deleteBtn: {
     marginLeft: 'auto',
     background: 'none',
     border: 'none',
-    color: '#dc2626',
+    color: 'var(--danger)',
     fontSize: '1rem',
     cursor: 'pointer',
     lineHeight: 1,
@@ -598,46 +618,52 @@ const styles = {
   eventTitle: {
     margin: 0,
     fontSize: '0.9rem',
-    color: '#1e293b',
+    color: 'var(--ink-dark)',
+    fontFamily: 'var(--font-heading)',
   },
   eventDesc: {
     margin: '0.25rem 0 0 0',
     fontSize: '0.8rem',
-    color: '#475569',
+    color: 'var(--ink-medium)',
     lineHeight: 1.4,
   },
   // Story beats
   extractBtn: {
     padding: '0.5rem 1rem',
-    borderRadius: '6px',
-    backgroundColor: '#7c3aed',
-    color: '#fff',
+    borderRadius: '2px',
+    backgroundColor: 'var(--accent)',
+    color: 'var(--card-bg)',
     border: 'none',
     fontSize: '0.8rem',
     cursor: 'pointer',
+    fontFamily: 'var(--font-body)',
   },
   extractedSection: {
     padding: '1rem',
-    backgroundColor: '#f5f3ff',
-    border: '1px solid #ddd6fe',
-    borderRadius: '8px',
+    backgroundColor: 'var(--sidebar-bg)',
+    border: '1px solid var(--border-light)',
+    borderRadius: '2px',
     marginBottom: '1rem',
   },
   extractedTitle: {
     margin: '0 0 0.25rem 0',
     fontSize: '0.9rem',
-    color: '#6d28d9',
+    color: 'var(--accent)',
+    fontFamily: 'var(--font-heading)',
+    fontVariant: 'small-caps',
+    letterSpacing: '0.08em',
   },
   extractedHint: {
     margin: '0 0 0.75rem 0',
     fontSize: '0.75rem',
-    color: '#8b5cf6',
+    color: 'var(--ink-medium)',
+    fontStyle: 'italic',
   },
   extractedCard: {
     padding: '0.6rem 0.75rem',
-    backgroundColor: '#fff',
-    borderRadius: '6px',
-    border: '1px solid #e9e5f5',
+    backgroundColor: 'var(--card-bg)',
+    borderRadius: '2px',
+    border: '1px solid var(--border-light)',
     marginBottom: '0.5rem',
   },
   extractedHeader: {
@@ -649,23 +675,25 @@ const styles = {
   extractedName: {
     margin: 0,
     fontSize: '0.85rem',
-    color: '#1e293b',
+    color: 'var(--ink-dark)',
+    fontFamily: 'var(--font-heading)',
   },
   extractedDesc: {
     margin: '0.2rem 0 0 0',
     fontSize: '0.8rem',
-    color: '#475569',
+    color: 'var(--ink-medium)',
     lineHeight: 1.4,
   },
   removeBtn: {
     marginLeft: 'auto',
     padding: '0.15rem 0.4rem',
-    borderRadius: '4px',
+    borderRadius: '1px',
     backgroundColor: 'transparent',
-    color: '#dc2626',
-    border: '1px solid #fca5a5',
+    color: 'var(--danger)',
+    border: '1px solid var(--danger)',
     fontSize: '0.7rem',
     cursor: 'pointer',
+    fontFamily: 'var(--font-body)',
   },
   extractedActions: {
     display: 'flex',
@@ -674,21 +702,23 @@ const styles = {
   },
   saveBtn: {
     padding: '0.5rem 1rem',
-    borderRadius: '6px',
-    backgroundColor: '#059669',
-    color: '#fff',
+    borderRadius: '2px',
+    backgroundColor: 'var(--success)',
+    color: 'var(--card-bg)',
     border: 'none',
     fontSize: '0.8rem',
     cursor: 'pointer',
+    fontFamily: 'var(--font-body)',
   },
   discardBtn: {
     padding: '0.5rem 1rem',
-    borderRadius: '6px',
+    borderRadius: '2px',
     backgroundColor: 'transparent',
-    color: '#64748b',
-    border: '1px solid #cbd5e1',
+    color: 'var(--ink-light)',
+    border: '1px solid var(--border-medium)',
     fontSize: '0.8rem',
     cursor: 'pointer',
+    fontFamily: 'var(--font-body)',
   },
   beatsList: {
     display: 'flex',
@@ -697,9 +727,9 @@ const styles = {
   },
   beatCard: {
     padding: '0.75rem 1rem',
-    borderRadius: '8px',
-    backgroundColor: '#f8fafc',
-    border: '1px solid #e2e8f0',
+    borderRadius: '2px',
+    backgroundColor: 'var(--sidebar-bg)',
+    border: '1px solid var(--border-light)',
   },
   beatHeader: {
     display: 'flex',
@@ -710,43 +740,41 @@ const styles = {
   beatType: {
     fontSize: '0.7rem',
     fontWeight: 600,
-    padding: '0.15rem 0.4rem',
-    borderRadius: '4px',
-    backgroundColor: '#ede9fe',
-    color: '#6d28d9',
+    color: 'var(--accent)',
     textTransform: 'capitalize',
+    fontVariant: 'small-caps',
+    letterSpacing: '0.06em',
   },
   beatStatus: {
     fontSize: '0.7rem',
-    padding: '0.15rem 0.4rem',
-    borderRadius: '4px',
-    backgroundColor: '#e2e8f0',
-    color: '#475569',
+    color: 'var(--ink-medium)',
     textTransform: 'capitalize',
+    fontVariant: 'small-caps',
   },
   beatStatusSelect: {
     padding: '0.15rem 0.3rem',
-    borderRadius: '4px',
-    border: '1px solid #cbd5e1',
+    borderRadius: '1px',
+    border: '1px solid var(--border-medium)',
     fontSize: '0.7rem',
     outline: 'none',
-    fontFamily: 'inherit',
+    fontFamily: 'var(--font-body)',
   },
   beatTitle: {
     margin: 0,
     fontSize: '0.9rem',
-    color: '#1e293b',
+    color: 'var(--ink-dark)',
+    fontFamily: 'var(--font-heading)',
   },
   beatDesc: {
     margin: '0.25rem 0 0 0',
     fontSize: '0.8rem',
-    color: '#475569',
+    color: 'var(--ink-medium)',
     lineHeight: 1.4,
   },
   beatNotes: {
     margin: '0.25rem 0 0 0',
     fontSize: '0.75rem',
-    color: '#7c3aed',
+    color: 'var(--sepia)',
     fontStyle: 'italic',
   },
 };

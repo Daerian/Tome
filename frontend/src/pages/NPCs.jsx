@@ -320,7 +320,7 @@ export default function NPCs({ campaignId, role }) {
                     <span
                       style={{
                         ...styles.typeBadge,
-                        backgroundColor: typeColors[ch.type] || '#e2e8f0',
+                        color: typeColors[ch.type] || 'var(--ink-medium)',
                       }}
                     >
                       {ch.type.toUpperCase()}
@@ -427,7 +427,7 @@ function CharacterDetail({ character, role, onBack, onUpdate, onDelete }) {
             <span
               style={{
                 ...styles.typeBadge,
-                backgroundColor: typeColors[ch.type] || '#e2e8f0',
+                color: typeColors[ch.type] || 'var(--ink-medium)',
               }}
             >
               {ch.type.toUpperCase()}
@@ -441,7 +441,7 @@ function CharacterDetail({ character, role, onBack, onUpdate, onDelete }) {
             <span
               style={{
                 ...styles.statusBadge,
-                backgroundColor: statusColors[ch.status] || '#e2e8f0',
+                color: statusColors[ch.status] || 'var(--ink-faint)',
               }}
             >
               {ch.status}
@@ -624,17 +624,17 @@ function CharacterDetail({ character, role, onBack, onUpdate, onDelete }) {
 // ---------------------------------------------------------------------------
 
 const typeColors = {
-  pc: '#dbeafe',
-  npc: '#ede9fe',
-  companion: '#d1fae5',
-  deity: '#fef3c7',
+  pc: 'var(--accent)',
+  npc: 'var(--ink-medium)',
+  companion: 'var(--success)',
+  deity: 'var(--gold)',
 };
 
 const statusColors = {
-  alive: '#d1fae5',
-  dead: '#fee2e2',
-  missing: '#fef3c7',
-  retired: '#e2e8f0',
+  alive: 'var(--success)',
+  dead: 'var(--danger)',
+  missing: 'var(--sepia)',
+  retired: 'var(--ink-faint)',
 };
 
 const styles = {
@@ -652,40 +652,43 @@ const styles = {
   title: {
     margin: 0,
     fontSize: '1.25rem',
-    color: '#1e293b',
+    color: 'var(--ink-dark)',
+    fontFamily: 'var(--font-heading)',
   },
   button: {
     padding: '0.5rem 1rem',
-    borderRadius: '8px',
-    backgroundColor: '#2563eb',
+    borderRadius: '2px',
+    backgroundColor: 'var(--accent)',
     color: '#fff',
     border: 'none',
     fontSize: '0.875rem',
     cursor: 'pointer',
+    fontFamily: 'var(--font-body)',
   },
   cancelBtn: {
     padding: '0.5rem 1rem',
-    borderRadius: '8px',
+    borderRadius: '2px',
     backgroundColor: 'transparent',
-    color: '#64748b',
-    border: '1px solid #cbd5e1',
+    color: 'var(--ink-light)',
+    border: '1px solid var(--border-medium)',
     fontSize: '0.875rem',
     cursor: 'pointer',
+    fontFamily: 'var(--font-body)',
   },
   deleteBtn: {
     padding: '0.5rem 1rem',
-    borderRadius: '8px',
+    borderRadius: '2px',
     backgroundColor: 'transparent',
-    border: '1px solid #fca5a5',
-    color: '#dc2626',
+    border: '1px solid var(--danger)',
+    color: 'var(--danger)',
     fontSize: '0.875rem',
     cursor: 'pointer',
   },
   searchInput: {
     width: '100%',
     padding: '0.6rem 0.75rem',
-    borderRadius: '8px',
-    border: '1px solid #cbd5e1',
+    borderRadius: '2px',
+    border: '1px solid var(--border-medium)',
     fontSize: '0.875rem',
     outline: 'none',
     marginBottom: '1rem',
@@ -697,9 +700,9 @@ const styles = {
     gap: '0.5rem',
     marginBottom: '1rem',
     padding: '1rem',
-    borderRadius: '10px',
-    border: '1px solid #e2e8f0',
-    backgroundColor: '#f8fafc',
+    borderRadius: '3px',
+    border: '1px solid var(--border-light)',
+    backgroundColor: 'var(--sidebar-bg)',
   },
   editForm: {
     display: 'flex',
@@ -714,27 +717,29 @@ const styles = {
   },
   input: {
     padding: '0.5rem 0.75rem',
-    borderRadius: '6px',
-    border: '1px solid #cbd5e1',
+    borderRadius: '2px',
+    border: '1px solid var(--border-medium)',
     fontSize: '0.85rem',
     outline: 'none',
+    fontFamily: 'var(--font-body)',
   },
   select: {
     padding: '0.5rem 0.75rem',
-    borderRadius: '6px',
-    border: '1px solid #cbd5e1',
+    borderRadius: '2px',
+    border: '1px solid var(--border-medium)',
     fontSize: '0.85rem',
     outline: 'none',
-    backgroundColor: '#fff',
+    backgroundColor: 'var(--card-bg)',
+    fontFamily: 'var(--font-body)',
   },
   textarea: {
     padding: '0.5rem 0.75rem',
-    borderRadius: '6px',
-    border: '1px solid #cbd5e1',
+    borderRadius: '2px',
+    border: '1px solid var(--border-medium)',
     fontSize: '0.85rem',
     outline: 'none',
     resize: 'vertical',
-    fontFamily: 'inherit',
+    fontFamily: 'var(--font-body)',
     lineHeight: 1.5,
   },
   relSection: {
@@ -745,42 +750,43 @@ const styles = {
   relLabel: {
     fontSize: '0.8rem',
     fontWeight: 600,
-    color: '#475569',
+    color: 'var(--ink-medium)',
   },
   addRelBtn: {
     padding: '0.3rem 0.6rem',
-    borderRadius: '6px',
+    borderRadius: '2px',
     backgroundColor: 'transparent',
-    border: '1px dashed #94a3b8',
-    color: '#64748b',
+    border: '1px dashed var(--ink-faint)',
+    color: 'var(--ink-light)',
     fontSize: '0.75rem',
     cursor: 'pointer',
     alignSelf: 'flex-start',
   },
   removeBtn: {
     padding: '0.3rem 0.5rem',
-    borderRadius: '4px',
+    borderRadius: '1px',
     backgroundColor: 'transparent',
-    border: '1px solid #fca5a5',
-    color: '#dc2626',
+    border: '1px solid var(--danger)',
+    color: 'var(--danger)',
     fontSize: '0.75rem',
     cursor: 'pointer',
     lineHeight: 1,
   },
   muted: {
-    color: '#94a3b8',
+    color: 'var(--ink-faint)',
     fontSize: '0.9rem',
   },
   empty: {
     textAlign: 'center',
     padding: '3rem 1rem',
-    backgroundColor: '#f8fafc',
-    borderRadius: '12px',
-    border: '1px dashed #cbd5e1',
+    backgroundColor: 'var(--sidebar-bg)',
+    borderRadius: '3px',
+    border: '1px dashed var(--border-medium)',
+    fontStyle: 'italic',
   },
   emptyText: {
     margin: '0 0 0.25rem 0',
-    color: '#334155',
+    color: 'var(--ink-dark)',
   },
   list: {
     display: 'flex',
@@ -791,13 +797,13 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     padding: '0.75rem 1rem',
-    borderRadius: '10px',
-    border: '1px solid #e2e8f0',
-    backgroundColor: '#fff',
+    borderRadius: '3px',
+    border: '1px solid var(--border-light)',
+    backgroundColor: 'var(--card-bg)',
     textAlign: 'left',
     cursor: 'pointer',
     width: '100%',
-    fontFamily: 'inherit',
+    fontFamily: 'var(--font-body)',
   },
   cardRow: {
     display: 'flex',
@@ -807,9 +813,10 @@ const styles = {
   thumbnail: {
     width: '48px',
     height: '48px',
-    borderRadius: '8px',
+    borderRadius: '3px',
     objectFit: 'cover',
     flexShrink: 0,
+    border: '1px solid var(--border-medium)',
   },
   cardInfo: {
     flex: 1,
@@ -824,28 +831,28 @@ const styles = {
   cardName: {
     fontSize: '0.95rem',
     fontWeight: 600,
-    color: '#1e293b',
+    color: 'var(--ink-dark)',
   },
   typeBadge: {
     fontSize: '0.65rem',
     fontWeight: 600,
     padding: '0.15rem 0.4rem',
-    borderRadius: '4px',
-    color: '#334155',
     flexShrink: 0,
+    fontVariant: 'small-caps',
+    fontFamily: 'var(--font-body)',
   },
   meta: {
     fontSize: '0.8rem',
-    color: '#64748b',
+    color: 'var(--ink-light)',
   },
   metaItem: {
     fontSize: '0.8rem',
-    color: '#64748b',
+    color: 'var(--ink-light)',
   },
   preview: {
     margin: '0.25rem 0 0 0',
     fontSize: '0.8rem',
-    color: '#64748b',
+    color: 'var(--ink-light)',
     lineHeight: 1.4,
   },
   tagRow: {
@@ -857,10 +864,10 @@ const styles = {
   tag: {
     fontSize: '0.65rem',
     padding: '0.1rem 0.4rem',
-    borderRadius: '4px',
-    backgroundColor: '#f1f5f9',
-    color: '#475569',
-    border: '1px solid #e2e8f0',
+    borderRadius: '1px',
+    backgroundColor: 'var(--sidebar-bg)',
+    color: 'var(--ink-medium)',
+    border: '1px solid var(--border-light)',
   },
   // Detail styles
   detailContainer: {
@@ -872,10 +879,10 @@ const styles = {
     padding: '0.4rem 0',
     background: 'none',
     border: 'none',
-    color: '#2563eb',
+    color: 'var(--accent)',
     fontSize: '0.85rem',
     cursor: 'pointer',
-    fontFamily: 'inherit',
+    fontFamily: 'var(--font-body)',
     marginBottom: '1rem',
   },
   detailHeader: {
@@ -884,19 +891,21 @@ const styles = {
     alignItems: 'flex-start',
     marginBottom: '1.5rem',
     paddingBottom: '1rem',
-    borderBottom: '1px solid #e2e8f0',
+    borderBottom: '1px solid var(--border-light)',
   },
   portrait: {
     width: '80px',
     height: '80px',
-    borderRadius: '10px',
+    borderRadius: '3px',
     objectFit: 'cover',
     flexShrink: 0,
+    border: '1px solid var(--border-medium)',
   },
   detailName: {
     margin: '0 0 0.35rem 0',
     fontSize: '1.35rem',
-    color: '#1e293b',
+    color: 'var(--ink-dark)',
+    fontFamily: 'var(--font-heading)',
   },
   detailMeta: {
     display: 'flex',
@@ -908,8 +917,9 @@ const styles = {
     fontSize: '0.65rem',
     fontWeight: 600,
     padding: '0.15rem 0.4rem',
-    borderRadius: '4px',
-    color: '#334155',
+    fontVariant: 'small-caps',
+    fontStyle: 'italic',
+    fontFamily: 'var(--font-body)',
   },
   detailBody: {
     display: 'flex',
@@ -921,14 +931,17 @@ const styles = {
     margin: '0 0 0.35rem 0',
     fontSize: '0.85rem',
     fontWeight: 600,
-    color: '#475569',
-    textTransform: 'uppercase',
-    letterSpacing: '0.03em',
+    color: 'var(--ink-medium)',
+    fontVariant: 'small-caps',
+    letterSpacing: '0.08em',
+    borderBottom: '1px solid var(--accent-rule)',
+    paddingBottom: '0.25rem',
+    fontFamily: 'var(--font-body)',
   },
   sectionText: {
     margin: 0,
     fontSize: '0.9rem',
-    color: '#334155',
+    color: 'var(--ink-dark)',
     lineHeight: 1.6,
     whiteSpace: 'pre-wrap',
   },
@@ -942,24 +955,24 @@ const styles = {
     gap: '0.5rem',
     alignItems: 'center',
     padding: '0.4rem 0.6rem',
-    borderRadius: '6px',
-    backgroundColor: '#f8fafc',
-    border: '1px solid #e2e8f0',
+    borderRadius: '2px',
+    backgroundColor: 'var(--sidebar-bg)',
+    border: '1px solid var(--border-light)',
   },
   relName: {
     fontSize: '0.85rem',
     fontWeight: 600,
-    color: '#1e293b',
+    color: 'var(--ink-dark)',
   },
   relType: {
     fontSize: '0.8rem',
-    color: '#64748b',
+    color: 'var(--ink-light)',
     fontStyle: 'italic',
   },
   detailActions: {
     display: 'flex',
     gap: '0.5rem',
     paddingTop: '1rem',
-    borderTop: '1px solid #e2e8f0',
+    borderTop: '1px solid var(--border-light)',
   },
 };
