@@ -40,7 +40,7 @@ export default function Sessions({ campaignId, session, role }) {
   }, [campaignId]);
 
   async function createSession() {
-    if (!newTitle.trim()) return;
+    if (role !== 'dm' || !newTitle.trim()) return;
     setCreating(true);
 
     const nextNumber =
@@ -118,7 +118,7 @@ export default function Sessions({ campaignId, session, role }) {
         )}
       </div>
 
-      {showCreate && (
+      {role === 'dm' && showCreate && (
         <div style={styles.createForm}>
           <input
             style={styles.input}
