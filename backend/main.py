@@ -12,6 +12,7 @@ from routers import (
     recap,
     reference,
     session_prep,
+    session_prep_plan,
 )
 
 # Load environment variables from backend/.env when running locally.
@@ -47,6 +48,7 @@ app.include_router(reference.router, prefix="/api")
 app.include_router(adventure.router, prefix="/api")
 app.include_router(extract_beats.router, prefix="/api")
 app.include_router(items.router, prefix="/api")
+app.include_router(session_prep_plan.router, prefix="/api")
 
 
 @app.get("/health")

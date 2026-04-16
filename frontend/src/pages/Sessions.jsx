@@ -9,6 +9,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import SessionDetail from './SessionDetail';
+import SessionPrep from './SessionPrep';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -16,6 +17,7 @@ export default function Sessions({ campaignId, session, role }) {
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState(null);
+  const [prepSessionId, setPrepSessionId] = useState(null); // open Prep Wizard
 
   // New-session form state (DM only)
   const [showCreate, setShowCreate] = useState(false);
@@ -82,10 +84,30 @@ export default function Sessions({ campaignId, session, role }) {
       setPrepNotes('');
       setShowCreate(false);
 
-      // Navigate to the new session detail
-      setSelectedId(data.id);
+      // Navigate to the Prep Wizard for new sessions
+      setPrepSessionId(data.id);
     }
     setCreating(false);
+  }
+
+  // Prep Wizard — launched after session creation (DM only)
+  if (prepSessionId) {
+    return (
+      <SessionPrep
+        sessionId={prepSessionId}
+        campaignId={campaignId}
+        session={session}
+        role={role}
+        onBack={() => {
+          setPrepSessionId(null);
+          fetchSessions();
+        }}
+        onViewSession={() => {
+          setSelectedId(prepSessionId);
+          setPrepSessionId(null);
+        }}
+      />
+    );
   }
 
   // Drill into a single session — re-fetch list on return

@@ -11,6 +11,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import SessionPrep from './SessionPrep';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -24,6 +25,7 @@ export default function SessionDetail({
   const [sessionData, setSessionData] = useState(null);
   const [notes, setNotes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [prepMode, setPrepMode] = useState(false); // open Prep Wizard
 
   // Collapsible sections state
   const [expandedSections, setExpandedSections] = useState({
@@ -354,6 +356,23 @@ export default function SessionDetail({
     );
   }
 
+  // Prep Wizard overlay — DM only
+  if (prepMode) {
+    return (
+      <SessionPrep
+        sessionId={sessionId}
+        campaignId={campaignId}
+        session={session}
+        role={role}
+        onBack={() => {
+          setPrepMode(false);
+          fetchData(); // refresh in case prep_config was saved
+        }}
+        onViewSession={() => setPrepMode(false)}
+      />
+    );
+  }
+
   if (!sessionData) {
     return (
       <div style={{ textAlign: 'center', marginTop: '2rem' }}>
@@ -383,16 +402,24 @@ export default function SessionDetail({
         </div>
         <div style={styles.statusArea}>
           {role === 'dm' ? (
-            <select
-              style={styles.statusSelect}
-              value={s.status}
-              onChange={(e) => updateStatus(e.target.value)}
-            >
-              <option value="planned">Planned</option>
-              <option value="in_progress">In Progress</option>
-              <option value="completed">Completed</option>
-              <option value="cancelled">Cancelled</option>
-            </select>
+            <>
+              <select
+                style={styles.statusSelect}
+                value={s.status}
+                onChange={(e) => updateStatus(e.target.value)}
+              >
+                <option value="planned">Planned</option>
+                <option value="in_progress">In Progress</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+              <button
+                style={styles.prepWizardBtn}
+                onClick={() => setPrepMode(true)}
+              >
+                Prep Wizard
+              </button>
+            </>
           ) : (
             <span style={styles.badge}>{s.status}</span>
           )}
@@ -966,6 +993,19 @@ const styles = {
   statusArea: {
     display: 'flex',
     alignItems: 'center',
+    gap: '0.5rem',
+  },
+  prepWizardBtn: {
+    padding: '0.35rem 0.75rem',
+    borderRadius: '2px',
+    backgroundColor: 'var(--accent)',
+    color: '#fff',
+    border: 'none',
+    fontSize: '0.78rem',
+    fontVariant: 'small-caps',
+    letterSpacing: '0.04em',
+    fontFamily: 'var(--font-heading)',
+    cursor: 'pointer',
   },
   statusSelect: {
     padding: '0.35rem 0.5rem',
