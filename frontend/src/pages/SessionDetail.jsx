@@ -328,7 +328,9 @@ export default function SessionDetail({
       .eq('id', id);
     if (!error) {
       setLoot((prev) =>
-        prev.map((l) => (l.id === id ? { ...l, player_visible: newVisible } : l)),
+        prev.map((l) =>
+          l.id === id ? { ...l, player_visible: newVisible } : l,
+        ),
       );
       // Keep the treasury entry in sync for Scriptorium-generated loot
       if (lootItem?.scriptorium_loot) {
@@ -490,7 +492,9 @@ export default function SessionDetail({
                           {line.replace('## ', '')}
                         </p>
                       ) : line.trim() ? (
-                        <p key={i} style={styles.prepPara}>{line}</p>
+                        <p key={i} style={styles.prepPara}>
+                          {line}
+                        </p>
                       ) : (
                         <br key={i} />
                       ),
@@ -924,7 +928,13 @@ export default function SessionDetail({
                           </span>
                         )}
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.25rem',
+                        }}
+                      >
                         {role === 'dm' && (
                           <button
                             style={{
@@ -933,7 +943,9 @@ export default function SessionDetail({
                                 ? 'var(--success)'
                                 : 'var(--ink-faint)',
                             }}
-                            onClick={() => toggleLootVisibility(l.id, l.player_visible)}
+                            onClick={() =>
+                              toggleLootVisibility(l.id, l.player_visible)
+                            }
                             title={
                               l.player_visible
                                 ? 'Visible to players — click to hide'

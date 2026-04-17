@@ -22,13 +22,13 @@ const API_URL = import.meta.env.VITE_API_URL;
 // ---------------------------------------------------------------------------
 
 const TYPE_META = {
-  rp:     { label: 'Roleplay',          color: 'var(--accent)',  mixKey: 'rp' },
-  combat: { label: 'Combat',            color: '#c0392b',        mixKey: 'combat' },
-  puzzle: { label: 'Puzzle',            color: 'var(--sepia)',   mixKey: 'puzzles' },
+  rp: { label: 'Roleplay', color: 'var(--accent)', mixKey: 'rp' },
+  combat: { label: 'Combat', color: '#c0392b', mixKey: 'combat' },
+  puzzle: { label: 'Puzzle', color: 'var(--sepia)', mixKey: 'puzzles' },
 };
 
 const DIFFICULTY_OPTIONS = ['easy', 'medium', 'hard', 'deadly'];
-const LOOT_CATEGORIES    = ['gold', 'item', 'gem', 'art', 'magic_item', 'other'];
+const LOOT_CATEGORIES = ['gold', 'item', 'gem', 'art', 'magic_item', 'other'];
 
 // ---------------------------------------------------------------------------
 // Component
@@ -38,7 +38,6 @@ export default function SessionPrep({
   sessionId,
   campaignId,
   session,
-  role,
   onBack,
   onViewSession,
 }) {
@@ -57,32 +56,44 @@ export default function SessionPrep({
   const [fetchingRoutes, setFetchingRoutes] = useState(false);
 
   // Planning inputs (Section IV)
-  const [encounterTone, setEncounterTone] = useState({ rp: 'moderate', combat: 'moderate', puzzle: 'moderate' });
-  const [encounterMix, setEncounterMix] = useState({ rp: 2, combat: 2, puzzles: 1 });
+  const [encounterTone, setEncounterTone] = useState({
+    rp: 'moderate',
+    combat: 'moderate',
+    puzzle: 'moderate',
+  });
+  const [encounterMix, setEncounterMix] = useState({
+    rp: 2,
+    combat: 2,
+    puzzles: 1,
+  });
   const [selectedObjectives, setSelectedObjectives] = useState([]);
 
   // The Stacks — candidates + selections
   const [candidates, setCandidates] = useState(null);
   // selections: { rp: Set<number>, combat: Set<number>, puzzle: Set<number> }
-  const [selections, setSelections] = useState({ rp: new Set(), combat: new Set(), puzzle: new Set() });
+  const [selections, setSelections] = useState({
+    rp: new Set(),
+    combat: new Set(),
+    puzzle: new Set(),
+  });
 
   // Per-card edit / rewrite state (keyed by "type-index")
-  const [editOpen,    setEditOpen]    = useState({});
+  const [editOpen, setEditOpen] = useState({});
   const [rewriteOpen, setRewriteOpen] = useState({});
   const [rewriteHint, setRewriteHint] = useState({});
-  const [rewriting,   setRewriting]   = useState({});
+  const [rewriting, setRewriting] = useState({});
 
   // NPC + loot appendices
-  const [npcHighlights,   setNpcHighlights]   = useState([]);
+  const [npcHighlights, setNpcHighlights] = useState([]);
   const [lootSuggestions, setLootSuggestions] = useState([]);
 
   // Loot editing
   const [lootEditOpen, setLootEditOpen] = useState({});
 
   // Generation + save state
-  const [drafting,     setDrafting]     = useState(false);
-  const [draftError,   setDraftError]   = useState('');
-  const [saving,       setSaving]       = useState(false);
+  const [drafting, setDrafting] = useState(false);
+  const [draftError, setDraftError] = useState('');
+  const [saving, setSaving] = useState(false);
   const [loadingBrief, setLoadingBrief] = useState(false);
 
   // ---------------------------------------------------------------------------
@@ -120,21 +131,26 @@ export default function SessionPrep({
           setEncounterTone(saved.encounter_tone);
         } else if (saved.tone) {
           // Backwards-compat: single global tone → apply to all types
-          setEncounterTone({ rp: saved.tone, combat: saved.tone, puzzle: saved.tone });
+          setEncounterTone({
+            rp: saved.tone,
+            combat: saved.tone,
+            puzzle: saved.tone,
+          });
         }
-        if (saved.encounter_mix)       setEncounterMix(saved.encounter_mix);
-        if (saved.selected_objectives) setSelectedObjectives(saved.selected_objectives);
+        if (saved.encounter_mix) setEncounterMix(saved.encounter_mix);
+        if (saved.selected_objectives)
+          setSelectedObjectives(saved.selected_objectives);
         if (saved.candidates) {
           setCandidates(saved.candidates);
           setSelections({
-            rp:     new Set(saved.rp_selected     || []),
+            rp: new Set(saved.rp_selected || []),
             combat: new Set(saved.combat_selected || []),
             puzzle: new Set(saved.puzzle_selected || []),
           });
         }
-        if (saved.npc_highlights)   setNpcHighlights(saved.npc_highlights);
+        if (saved.npc_highlights) setNpcHighlights(saved.npc_highlights);
         if (saved.loot_suggestions) setLootSuggestions(saved.loot_suggestions);
-        if (saved.routes)           setRoutes(saved.routes);
+        if (saved.routes) setRoutes(saved.routes);
         if (saved.selected_route !== undefined && saved.selected_route !== null)
           setSelectedRoute(saved.selected_route);
         if (saved.custom_direction) setCustomDirection(saved.custom_direction);
@@ -145,7 +161,7 @@ export default function SessionPrep({
       }
     }
     if (missionsRes.data) setMissions(missionsRes.data);
-    if (beatsRes.data)    setStoryBeats(beatsRes.data);
+    if (beatsRes.data) setStoryBeats(beatsRes.data);
     setLoading(false);
   }
 
@@ -159,7 +175,10 @@ export default function SessionPrep({
       setEditingTitle(false);
       return;
     }
-    await supabase.from('sessions').update({ title: trimmed }).eq('id', sessionId);
+    await supabase
+      .from('sessions')
+      .update({ title: trimmed })
+      .eq('id', sessionId);
     setSessionData((prev) => ({ ...prev, title: trimmed }));
     setEditingTitle(false);
   }
@@ -174,14 +193,19 @@ export default function SessionPrep({
       const res = await fetch(`${API_URL}/api/session-routes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_id: sessionId, campaign_id: campaignId }),
+        body: JSON.stringify({
+          session_id: sessionId,
+          campaign_id: campaignId,
+        }),
       });
       const data = await res.json();
       if (data.routes?.length) {
         setRoutes(data.routes);
         setSelectedRoute(null);
       }
-    } catch { /* silently fail */ }
+    } catch {
+      /* silently fail */
+    }
     setFetchingRoutes(false);
   }
 
@@ -210,8 +234,11 @@ export default function SessionPrep({
         }),
       });
       const data = await res.json();
-      if (data.prep) setSessionData((prev) => ({ ...prev, prep_brief: data.prep }));
-    } catch { /* silently fail */ }
+      if (data.prep)
+        setSessionData((prev) => ({ ...prev, prep_brief: data.prep }));
+    } catch {
+      /* silently fail */
+    }
     setLoadingBrief(false);
   }
 
@@ -222,7 +249,9 @@ export default function SessionPrep({
   function toggleObjective(id, type, title) {
     setSelectedObjectives((prev) => {
       const exists = prev.find((o) => o.id === id);
-      return exists ? prev.filter((o) => o.id !== id) : [...prev, { id, type, title }];
+      return exists
+        ? prev.filter((o) => o.id !== id)
+        : [...prev, { id, type, title }];
     });
   }
 
@@ -332,7 +361,9 @@ export default function SessionPrep({
         setRewriteOpen((prev) => ({ ...prev, [key]: false }));
         setRewriteHint((prev) => ({ ...prev, [key]: '' }));
       }
-    } catch { /* silently fail */ }
+    } catch {
+      /* silently fail */
+    }
 
     setRewriting((prev) => ({ ...prev, [key]: false }));
   }
@@ -368,17 +399,14 @@ export default function SessionPrep({
       selected_route: selectedRoute,
       custom_direction: customDirection,
       candidates: candidates || { rp: [], combat: [], puzzle: [] },
-      rp_selected:     [...selections.rp],
+      rp_selected: [...selections.rp],
       combat_selected: [...selections.combat],
       puzzle_selected: [...selections.puzzle],
-      npc_highlights:   npcHighlights,
+      npc_highlights: npcHighlights,
       loot_suggestions: lootSuggestions,
     };
 
-    await supabase
-      .from('sessions')
-      .update({ prep_config })
-      .eq('id', sessionId);
+    await supabase.from('sessions').update({ prep_config }).eq('id', sessionId);
 
     // Replace any previous Scriptorium loot for this session with the current list
     await Promise.all([
@@ -396,8 +424,12 @@ export default function SessionPrep({
 
     if (lootSuggestions.length > 0) {
       const categoryToItemType = {
-        magic_item: 'wondrous', gold: 'other', gem: 'other',
-        art: 'other', item: 'other', other: 'other',
+        magic_item: 'wondrous',
+        gold: 'other',
+        gem: 'other',
+        art: 'other',
+        item: 'other',
+        other: 'other',
       };
       await Promise.all([
         supabase.from('session_loot').insert(
@@ -440,7 +472,13 @@ export default function SessionPrep({
     for (const npc of npcHighlights) {
       if (!seenNames.has(npc.name)) {
         seenNames.add(npc.name);
-        scriptoriumItems.push({ type: 'character', name: npc.name, description: npc.role || null, stats: null, from_scriptorium: true });
+        scriptoriumItems.push({
+          type: 'character',
+          name: npc.name,
+          description: npc.role || null,
+          stats: null,
+          from_scriptorium: true,
+        });
       }
     }
 
@@ -455,7 +493,13 @@ export default function SessionPrep({
           const locKey = enc.location.toLowerCase();
           if (!seenNames.has(locKey)) {
             seenNames.add(locKey);
-            scriptoriumItems.push({ type: 'location', name: enc.location, description: enc.title, stats: null, from_scriptorium: true });
+            scriptoriumItems.push({
+              type: 'location',
+              name: enc.location,
+              description: enc.title,
+              stats: null,
+              from_scriptorium: true,
+            });
           }
         }
 
@@ -464,17 +508,34 @@ export default function SessionPrep({
           const monsterKey = `monster:${enc.enemies}`;
           if (!seenNames.has(monsterKey)) {
             seenNames.add(monsterKey);
-            const statsStr = enc.difficulty ? `Difficulty: ${enc.difficulty}` : null;
-            scriptoriumItems.push({ type: 'monster', name: enc.enemies, description: enc.title, stats: statsStr, from_scriptorium: true });
+            const statsStr = enc.difficulty
+              ? `Difficulty: ${enc.difficulty}`
+              : null;
+            scriptoriumItems.push({
+              type: 'monster',
+              name: enc.enemies,
+              description: enc.title,
+              stats: statsStr,
+              from_scriptorium: true,
+            });
           }
         }
 
         // NPCs from rp/puzzle encounters not already in highlights
-        if ((encType === 'rp' || encType === 'puzzle') && Array.isArray(enc.npcs_involved)) {
+        if (
+          (encType === 'rp' || encType === 'puzzle') &&
+          Array.isArray(enc.npcs_involved)
+        ) {
           for (const npcName of enc.npcs_involved) {
             if (!seenNames.has(npcName)) {
               seenNames.add(npcName);
-              scriptoriumItems.push({ type: 'character', name: npcName, description: enc.title, stats: null, from_scriptorium: true });
+              scriptoriumItems.push({
+                type: 'character',
+                name: npcName,
+                description: enc.title,
+                stats: null,
+                from_scriptorium: true,
+              });
             }
           }
         }
@@ -482,7 +543,9 @@ export default function SessionPrep({
     }
 
     // Merge: keep manually-added items, replace scriptorium items
-    const existingManual = (sessionData?.prep_items || []).filter((it) => !it.from_scriptorium);
+    const existingManual = (sessionData?.prep_items || []).filter(
+      (it) => !it.from_scriptorium,
+    );
     const mergedItems = [...scriptoriumItems, ...existingManual];
 
     await supabase
@@ -502,11 +565,15 @@ export default function SessionPrep({
     const list = candidates?.[type] || [];
     if (list.length === 0) return null;
 
-    const meta        = TYPE_META[type];
-    const need        = encounterMix[meta.mixKey] ?? 0;
-    const chosen      = selections[type]?.size ?? 0;
-    const overLimit   = chosen > need;
-    const countColor  = overLimit ? '#c0392b' : chosen === need ? 'var(--success)' : 'var(--ink-faint)';
+    const meta = TYPE_META[type];
+    const need = encounterMix[meta.mixKey] ?? 0;
+    const chosen = selections[type]?.size ?? 0;
+    const overLimit = chosen > need;
+    const countColor = overLimit
+      ? '#c0392b'
+      : chosen === need
+        ? 'var(--success)'
+        : 'var(--ink-faint)';
 
     return (
       <div key={type} style={styles.candidateGroup}>
@@ -528,12 +595,12 @@ export default function SessionPrep({
   }
 
   function renderCandidateCard(type, enc, index) {
-    const key       = `${type}-${index}`;
-    const isChosen  = selections[type]?.has(index);
-    const meta      = TYPE_META[type];
-    const isRewrit  = rewriting[key];
+    const key = `${type}-${index}`;
+    const isChosen = selections[type]?.has(index);
+    const meta = TYPE_META[type];
+    const isRewrit = rewriting[key];
     const editShown = editOpen[key];
-    const rwShown   = rewriteOpen[key];
+    const rwShown = rewriteOpen[key];
 
     const npcsStr = Array.isArray(enc.npcs_involved)
       ? enc.npcs_involved.join(', ')
@@ -567,21 +634,30 @@ export default function SessionPrep({
               >
                 ✓
               </span>
-              <span style={{ ...styles.typeBadge, backgroundColor: meta.color }}>
+              <span
+                style={{ ...styles.typeBadge, backgroundColor: meta.color }}
+              >
                 {meta.label}
               </span>
             </div>
-            <div style={styles.cardActions} onClick={(e) => e.stopPropagation()}>
+            <div
+              style={styles.cardActions}
+              onClick={(e) => e.stopPropagation()}
+            >
               <button
                 style={styles.cardActionBtn}
-                onClick={() => setEditOpen((p) => ({ ...p, [key]: !editShown }))}
+                onClick={() =>
+                  setEditOpen((p) => ({ ...p, [key]: !editShown }))
+                }
                 title="Edit"
               >
                 {editShown ? 'Done' : 'Edit'}
               </button>
               <button
                 style={styles.cardActionBtn}
-                onClick={() => setRewriteOpen((p) => ({ ...p, [key]: !rwShown }))}
+                onClick={() =>
+                  setRewriteOpen((p) => ({ ...p, [key]: !rwShown }))
+                }
                 title="Rewrite this entry"
               >
                 Rewrite
@@ -594,7 +670,9 @@ export default function SessionPrep({
             <input
               style={styles.cardInput}
               value={enc.title}
-              onChange={(e) => updateCandidate(type, index, 'title', e.target.value)}
+              onChange={(e) =>
+                updateCandidate(type, index, 'title', e.target.value)
+              }
               onClick={(e) => e.stopPropagation()}
             />
           ) : (
@@ -607,7 +685,9 @@ export default function SessionPrep({
               style={styles.cardTextarea}
               value={enc.description}
               rows={3}
-              onChange={(e) => updateCandidate(type, index, 'description', e.target.value)}
+              onChange={(e) =>
+                updateCandidate(type, index, 'description', e.target.value)
+              }
               onClick={(e) => e.stopPropagation()}
             />
           ) : (
@@ -625,7 +705,9 @@ export default function SessionPrep({
                   <input
                     style={styles.cardInput}
                     value={enc.enemies || ''}
-                    onChange={(e) => updateCandidate(type, index, 'enemies', e.target.value)}
+                    onChange={(e) =>
+                      updateCandidate(type, index, 'enemies', e.target.value)
+                    }
                     placeholder="e.g. 3 Bandits, 1 Captain"
                   />
                 </div>
@@ -634,7 +716,9 @@ export default function SessionPrep({
                   <select
                     style={styles.cardSelect}
                     value={enc.difficulty || 'medium'}
-                    onChange={(e) => updateCandidate(type, index, 'difficulty', e.target.value)}
+                    onChange={(e) =>
+                      updateCandidate(type, index, 'difficulty', e.target.value)
+                    }
                   >
                     {DIFFICULTY_OPTIONS.map((d) => (
                       <option key={d} value={d}>
@@ -653,7 +737,12 @@ export default function SessionPrep({
                   style={styles.cardInput}
                   value={npcsStr}
                   onChange={(e) =>
-                    updateCandidate(type, index, 'npcs_involved', e.target.value)
+                    updateCandidate(
+                      type,
+                      index,
+                      'npcs_involved',
+                      e.target.value,
+                    )
                   }
                   placeholder="Comma-separated NPC names..."
                 />
@@ -666,7 +755,9 @@ export default function SessionPrep({
                 <input
                   style={styles.cardInput}
                   value={enc.location || ''}
-                  onChange={(e) => updateCandidate(type, index, 'location', e.target.value)}
+                  onChange={(e) =>
+                    updateCandidate(type, index, 'location', e.target.value)
+                  }
                   placeholder="e.g. The Rusty Anchor tavern"
                 />
               </div>
@@ -675,7 +766,9 @@ export default function SessionPrep({
                 <input
                   style={styles.cardInput}
                   value={enc.loot_hint || ''}
-                  onChange={(e) => updateCandidate(type, index, 'loot_hint', e.target.value)}
+                  onChange={(e) =>
+                    updateCandidate(type, index, 'loot_hint', e.target.value)
+                  }
                   placeholder="Optional loot note..."
                 />
               </div>
@@ -690,7 +783,12 @@ export default function SessionPrep({
               <span style={styles.metaPill}>{enc.enemies}</span>
             )}
             {type === 'combat' && enc.difficulty && (
-              <span style={{ ...styles.metaPill, color: difficultyColor(enc.difficulty) }}>
+              <span
+                style={{
+                  ...styles.metaPill,
+                  color: difficultyColor(enc.difficulty),
+                }}
+              >
                 {enc.difficulty}
               </span>
             )}
@@ -698,7 +796,9 @@ export default function SessionPrep({
               <span style={styles.metaPill}>{npcsStr}</span>
             )}
             {enc.location && (
-              <span style={{ ...styles.metaPill, fontStyle: 'normal' }}>📍 {enc.location}</span>
+              <span style={{ ...styles.metaPill, fontStyle: 'normal' }}>
+                📍 {enc.location}
+              </span>
             )}
           </div>
         )}
@@ -760,10 +860,14 @@ export default function SessionPrep({
                     <select
                       style={styles.cardSelect}
                       value={loot.category}
-                      onChange={(e) => updateLoot(i, 'category', e.target.value)}
+                      onChange={(e) =>
+                        updateLoot(i, 'category', e.target.value)
+                      }
                     >
                       {LOOT_CATEGORIES.map((cat) => (
-                        <option key={cat} value={cat}>{cat}</option>
+                        <option key={cat} value={cat}>
+                          {cat}
+                        </option>
                       ))}
                     </select>
                   ) : (
@@ -771,7 +875,9 @@ export default function SessionPrep({
                   )}
                   <button
                     style={styles.cardActionBtn}
-                    onClick={() => setLootEditOpen((p) => ({ ...p, [i]: !lootEditOpen[i] }))}
+                    onClick={() =>
+                      setLootEditOpen((p) => ({ ...p, [i]: !lootEditOpen[i] }))
+                    }
                   >
                     {lootEditOpen[i] ? 'Done' : 'Edit'}
                   </button>
@@ -818,14 +924,19 @@ export default function SessionPrep({
     return (
       <div style={styles.container}>
         <p style={styles.muted}>Session not found.</p>
-        <button style={styles.backBtn} onClick={onBack}>&larr; Back</button>
+        <button style={styles.backBtn} onClick={onBack}>
+          &larr; Back
+        </button>
       </div>
     );
   }
 
   const s = sessionData;
-  const hasCandidates = candidates &&
-    (candidates.rp?.length || candidates.combat?.length || candidates.puzzle?.length);
+  const hasCandidates =
+    candidates &&
+    (candidates.rp?.length ||
+      candidates.combat?.length ||
+      candidates.puzzle?.length);
 
   // ---------------------------------------------------------------------------
   // Render
@@ -855,7 +966,9 @@ export default function SessionPrep({
               value={sessionTitle}
               onChange={(e) => setSessionTitle(e.target.value)}
               onBlur={saveSessionTitle}
-              onKeyDown={(e) => { if (e.key === 'Enter') saveSessionTitle(); }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') saveSessionTitle();
+              }}
               autoFocus
               placeholder="Session title..."
             />
@@ -887,22 +1000,34 @@ export default function SessionPrep({
             <div style={styles.prepBriefBox}>
               {s.prep_brief.split('\n').map((line, i) =>
                 line.startsWith('## ') ? (
-                  <p key={i} style={styles.briefHeading}>{line.replace('## ', '')}</p>
+                  <p key={i} style={styles.briefHeading}>
+                    {line.replace('## ', '')}
+                  </p>
                 ) : line.trim() ? (
-                  <p key={i} style={styles.briefPara}>{line}</p>
+                  <p key={i} style={styles.briefPara}>
+                    {line}
+                  </p>
                 ) : (
                   <br key={i} />
                 ),
               )}
             </div>
-            <button style={styles.ghostBtn} onClick={generateBrief} disabled={loadingBrief}>
+            <button
+              style={styles.ghostBtn}
+              onClick={generateBrief}
+              disabled={loadingBrief}
+            >
               {loadingBrief ? 'Rewriting...' : 'Rewrite Chronicle'}
             </button>
           </>
         ) : (
           <div style={styles.emptyBrief}>
             <p style={styles.muted}>No chronicle yet.</p>
-            <button style={styles.accentBtn} onClick={generateBrief} disabled={loadingBrief}>
+            <button
+              style={styles.accentBtn}
+              onClick={generateBrief}
+              disabled={loadingBrief}
+            >
               {loadingBrief ? 'Writing...' : 'Write Chronicle'}
             </button>
           </div>
@@ -931,7 +1056,9 @@ export default function SessionPrep({
                     ...styles.routeCard,
                     ...(selectedRoute === i ? styles.routeCardSelected : {}),
                   }}
-                  onClick={() => setSelectedRoute(selectedRoute === i ? null : i)}
+                  onClick={() =>
+                    setSelectedRoute(selectedRoute === i ? null : i)
+                  }
                   role="button"
                   tabIndex={0}
                   onKeyDown={(e) =>
@@ -958,7 +1085,11 @@ export default function SessionPrep({
         ) : (
           <div style={styles.emptyBrief}>
             <p style={styles.muted}>No route suggestions yet.</p>
-            <button style={styles.accentBtn} onClick={fetchRoutes} disabled={fetchingRoutes}>
+            <button
+              style={styles.accentBtn}
+              onClick={fetchRoutes}
+              disabled={fetchingRoutes}
+            >
               Suggest Routes
             </button>
           </div>
@@ -966,7 +1097,9 @@ export default function SessionPrep({
 
         <div style={{ marginTop: '1rem' }}>
           <p style={styles.subsectionLabel}>
-            {selectedRoute === 'custom' ? 'Custom Direction' : 'Or write your own:'}
+            {selectedRoute === 'custom'
+              ? 'Custom Direction'
+              : 'Or write your own:'}
           </p>
           <textarea
             style={styles.cardTextarea}
@@ -1005,10 +1138,17 @@ export default function SessionPrep({
                 />
                 <div style={styles.objectiveInfo}>
                   <span style={styles.objectiveTitle}>{m.title}</span>
-                  <span style={{ ...styles.priorityBadge, color: priorityColor(m.priority) }}>
+                  <span
+                    style={{
+                      ...styles.priorityBadge,
+                      color: priorityColor(m.priority),
+                    }}
+                  >
                     {m.priority}
                   </span>
-                  {m.description && <span style={styles.objectiveDesc}>{m.description}</span>}
+                  {m.description && (
+                    <span style={styles.objectiveDesc}>{m.description}</span>
+                  )}
                 </div>
               </label>
             ))}
@@ -1029,7 +1169,9 @@ export default function SessionPrep({
                 <div style={styles.objectiveInfo}>
                   <span style={styles.objectiveTitle}>{b.title}</span>
                   <span style={styles.beatType}>{b.type}</span>
-                  {b.description && <span style={styles.objectiveDesc}>{b.description}</span>}
+                  {b.description && (
+                    <span style={styles.objectiveDesc}>{b.description}</span>
+                  )}
                 </div>
               </label>
             ))}
@@ -1038,7 +1180,8 @@ export default function SessionPrep({
 
         {missions.length === 0 && storyBeats.length === 0 && (
           <p style={styles.muted}>
-            No active missions or story beats yet — add them in the campaign to use them here.
+            No active missions or story beats yet — add them in the campaign to
+            use them here.
           </p>
         )}
       </section>
@@ -1050,14 +1193,30 @@ export default function SessionPrep({
         <h3 style={styles.sectionLabel}>IV. Register</h3>
 
         <p style={styles.hint}>
-          Set how many encounters of each type to include and the intensity for each.
-          The Scriptorium drafts 5 candidates per type — pick the ones that fit.
+          Set how many encounters of each type to include and the intensity for
+          each. The Scriptorium drafts 5 candidates per type — pick the ones
+          that fit.
         </p>
         <div style={styles.mixToneTable}>
           {[
-            { mixKey: 'rp',      toneKey: 'rp',     label: 'Roleplay', color: TYPE_META.rp.color },
-            { mixKey: 'combat',  toneKey: 'combat',  label: 'Combat',   color: TYPE_META.combat.color },
-            { mixKey: 'puzzles', toneKey: 'puzzle',  label: 'Puzzle',   color: TYPE_META.puzzle.color },
+            {
+              mixKey: 'rp',
+              toneKey: 'rp',
+              label: 'Roleplay',
+              color: TYPE_META.rp.color,
+            },
+            {
+              mixKey: 'combat',
+              toneKey: 'combat',
+              label: 'Combat',
+              color: TYPE_META.combat.color,
+            },
+            {
+              mixKey: 'puzzles',
+              toneKey: 'puzzle',
+              label: 'Puzzle',
+              color: TYPE_META.puzzle.color,
+            },
           ].map(({ mixKey, toneKey, label, color }) => (
             <div key={mixKey} style={styles.mixToneRow}>
               <span style={{ ...styles.mixToneLabel, color }}>{label}</span>
@@ -1070,14 +1229,23 @@ export default function SessionPrep({
                       [mixKey]: Math.max(0, (prev[mixKey] || 0) - 1),
                     }))
                   }
-                >−</button>
-                <span style={styles.counterValue}>{encounterMix[mixKey] ?? 0}</span>
+                >
+                  −
+                </button>
+                <span style={styles.counterValue}>
+                  {encounterMix[mixKey] ?? 0}
+                </span>
                 <button
                   style={styles.counterBtn}
                   onClick={() =>
-                    setEncounterMix((prev) => ({ ...prev, [mixKey]: (prev[mixKey] || 0) + 1 }))
+                    setEncounterMix((prev) => ({
+                      ...prev,
+                      [mixKey]: (prev[mixKey] || 0) + 1,
+                    }))
                   }
-                >+</button>
+                >
+                  +
+                </button>
               </div>
               <div style={styles.toneSmGroup}>
                 {['light', 'moderate', 'intense'].map((t) => (
@@ -1085,7 +1253,9 @@ export default function SessionPrep({
                     key={t}
                     style={{
                       ...styles.toneSmBtn,
-                      ...(encounterTone[toneKey] === t ? styles.toneSmBtnActive : {}),
+                      ...(encounterTone[toneKey] === t
+                        ? styles.toneSmBtnActive
+                        : {}),
                     }}
                     onClick={() =>
                       setEncounterTone((prev) => ({ ...prev, [toneKey]: t }))
@@ -1099,12 +1269,16 @@ export default function SessionPrep({
           ))}
         </div>
 
-        <button style={styles.accentBtn} onClick={draftEncounters} disabled={drafting}>
+        <button
+          style={styles.accentBtn}
+          onClick={draftEncounters}
+          disabled={drafting}
+        >
           {drafting
             ? 'Drafting entries...'
             : hasCandidates
-            ? 'Redraft All Encounters'
-            : 'Draft Encounters'}
+              ? 'Redraft All Encounters'
+              : 'Draft Encounters'}
         </button>
         {draftError && <p style={styles.error}>{draftError}</p>}
       </section>
@@ -1116,9 +1290,9 @@ export default function SessionPrep({
         <section style={styles.section}>
           <h3 style={styles.sectionLabel}>V. The Stacks</h3>
           <p style={styles.hint}>
-            Click a card to select it for this session. Use <strong>Edit</strong> to tweak
-            details, or <strong>Rewrite</strong> to draft a replacement — you can add a note to
-            steer the new draft.
+            Click a card to select it for this session. Use{' '}
+            <strong>Edit</strong> to tweak details, or <strong>Rewrite</strong>{' '}
+            to draft a replacement — you can add a note to steer the new draft.
           </p>
 
           {['rp', 'combat', 'puzzle'].map((type) =>
@@ -1158,17 +1332,23 @@ export default function SessionPrep({
 
 function priorityColor(priority) {
   return (
-    { critical: '#c0392b', high: 'var(--accent)', medium: 'var(--sepia)', low: 'var(--ink-faint)' }[
-      priority
-    ] || 'var(--ink-faint)'
+    {
+      critical: '#c0392b',
+      high: 'var(--accent)',
+      medium: 'var(--sepia)',
+      low: 'var(--ink-faint)',
+    }[priority] || 'var(--ink-faint)'
   );
 }
 
 function difficultyColor(difficulty) {
   return (
-    { easy: 'var(--success)', medium: 'var(--sepia)', hard: 'var(--accent)', deadly: '#c0392b' }[
-      difficulty
-    ] || 'var(--ink-faint)'
+    {
+      easy: 'var(--success)',
+      medium: 'var(--sepia)',
+      hard: 'var(--accent)',
+      deadly: '#c0392b',
+    }[difficulty] || 'var(--ink-faint)'
   );
 }
 
@@ -1625,7 +1805,12 @@ const styles = {
     gap: '0.45rem',
   },
   cardRow: { display: 'flex', gap: '0.6rem', flexWrap: 'wrap' },
-  cardField: { display: 'flex', flexDirection: 'column', gap: '0.18rem', flex: 1 },
+  cardField: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.18rem',
+    flex: 1,
+  },
   fieldLabel: {
     fontSize: '0.68rem',
     fontWeight: 600,
@@ -1751,7 +1936,11 @@ const styles = {
     flexDirection: 'column',
     gap: '0.2rem',
   },
-  lootCardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
+  lootCardHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   lootName: {
     fontSize: '0.875rem',
     fontWeight: 600,

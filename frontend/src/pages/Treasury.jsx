@@ -80,7 +80,9 @@ export default function Treasury({ campaignId, session, role }) {
       .eq('id', id);
     if (!error) {
       setItems((prev) =>
-        prev.map((i) => (i.id === id ? { ...i, player_visible: newVisible } : i)),
+        prev.map((i) =>
+          i.id === id ? { ...i, player_visible: newVisible } : i,
+        ),
       );
     }
   }
@@ -838,12 +840,21 @@ function ItemDetail({
               </div>
             </div>
             {canEdit && (
-              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  gap: '0.5rem',
+                  flexWrap: 'wrap',
+                  alignItems: 'center',
+                }}
+              >
                 {role === 'dm' && (
                   <button
                     style={item.player_visible ? s.hideBtn : s.revealBtn}
                     onClick={() =>
-                      onUpdate(item.id, { player_visible: !item.player_visible })
+                      onUpdate(item.id, {
+                        player_visible: !item.player_visible,
+                      })
                     }
                     title={
                       item.player_visible
@@ -851,7 +862,9 @@ function ItemDetail({
                         : 'Reveal to players'
                     }
                   >
-                    {item.player_visible ? 'Hide from Players' : 'Reveal to Players'}
+                    {item.player_visible
+                      ? 'Hide from Players'
+                      : 'Reveal to Players'}
                   </button>
                 )}
                 <button style={s.editBtn} onClick={startEdit}>

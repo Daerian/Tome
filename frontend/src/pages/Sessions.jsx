@@ -158,7 +158,8 @@ export default function Sessions({ campaignId, session, role }) {
                 /* Inline delete confirmation */
                 <div style={styles.deleteConfirm}>
                   <span style={styles.deleteQuestion}>
-                    Delete &ldquo;{s.title || `Session ${s.session_number}`}&rdquo;? This cannot be undone.
+                    Delete &ldquo;{s.title || `Session ${s.session_number}`}
+                    &rdquo;? This cannot be undone.
                   </span>
                   <div style={styles.deleteActions}>
                     <button
@@ -188,7 +189,9 @@ export default function Sessions({ campaignId, session, role }) {
                     onKeyDown={(e) => e.key === 'Enter' && setSelectedId(s.id)}
                   >
                     <div style={styles.cardTop}>
-                      <span style={styles.number}>Session {s.session_number}</span>
+                      <span style={styles.number}>
+                        Session {s.session_number}
+                      </span>
                       <span
                         style={{
                           ...styles.statusBadge,
@@ -198,7 +201,9 @@ export default function Sessions({ campaignId, session, role }) {
                         {s.status}
                       </span>
                     </div>
-                    <span style={styles.sessionTitle}>{s.title || 'Untitled'}</span>
+                    <span style={styles.sessionTitle}>
+                      {s.title || 'Untitled'}
+                    </span>
                     {s.played_date && (
                       <span style={styles.date}>{s.played_date}</span>
                     )}

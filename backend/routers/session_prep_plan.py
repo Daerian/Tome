@@ -55,6 +55,7 @@ class EncounterMix(BaseModel):
 
 class EncounterTone(BaseModel):
     """Per-encounter-type tone — each type can have a different intensity."""
+
     rp: Literal["light", "moderate", "intense"] = "moderate"
     combat: Literal["light", "moderate", "intense"] = "moderate"
     puzzle: Literal["light", "moderate", "intense"] = "moderate"
@@ -201,9 +202,7 @@ def build_plan_context(
     )
     attendees_res = (
         sb.table("session_attendees")
-        .select(
-            "character_id, characters(id, name, race, class, level, description)"
-        )
+        .select("character_id, characters(id, name, race, class, level, description)")
         .eq("session_id", session_id)
         .execute()
     )
@@ -532,12 +531,12 @@ async def session_prep_plan(body: PrepPlanRequest):
             "puzzle": [e.model_dump() for e in out.puzzle_candidates],
         },
         "npc_highlights": [n.model_dump() for n in out.npc_highlights],
-        "loot_suggestions": [l.model_dump() for l in out.loot_suggestions],
+        "loot_suggestions": [ls.model_dump() for ls in out.loot_suggestions],
     }
 
-    sb.table("sessions").update(
-        {"prep_config": json.dumps(prep_config_update)}
-    ).eq("id", body.session_id).execute()
+    sb.table("sessions").update({"prep_config": json.dumps(prep_config_update)}).eq(
+        "id", body.session_id
+    ).execute()
 
     return {"plan": prep_config_update}
 
@@ -615,9 +614,7 @@ async def session_prep_encounter(body: EncounterRewriteRequest):
     if npcs:
         lines.append(
             "Available NPCs: "
-            + ", ".join(
-                f"{n['name']} ({n.get('description', '')})" for n in npcs[:10]
-            )
+            + ", ".join(f"{n['name']} ({n.get('description', '')})" for n in npcs[:10])
         )
 
     if body.existing_titles:
