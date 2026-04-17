@@ -19,11 +19,11 @@ export default function Sessions({ campaignId, session, role }) {
   const [selectedId, setSelectedId] = useState(null);
   const [prepSessionId, setPrepSessionId] = useState(null); // open Prep Wizard
 
-  // New-session form state (DM only)
-  const [showCreate, setShowCreate] = useState(false);
-  const [newTitle, setNewTitle] = useState('');
-  const [prepNotes, setPrepNotes] = useState('');
   const [creating, setCreating] = useState(false);
+
+  // Delete state (DM only)
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   async function fetchSessions() {
     const { data } = await supabase
@@ -42,7 +42,7 @@ export default function Sessions({ campaignId, session, role }) {
   }, [campaignId]);
 
   async function createSession() {
-    if (role !== 'dm' || !newTitle.trim()) return;
+    if (role !== 'dm' || creating) return;
     setCreating(true);
 
     const nextNumber =
@@ -50,47 +50,45 @@ export default function Sessions({ campaignId, session, role }) {
         ? Math.max(...sessions.map((s) => s.session_number)) + 1
         : 1;
 
-    const insertData = {
-      campaign_id: campaignId,
-      title: newTitle.trim(),
-      session_number: nextNumber,
-      status: 'planned',
-    };
-    if (prepNotes.trim()) {
-      insertData.dm_notes = prepNotes.trim();
-    }
-
     const { data, error } = await supabase
       .from('sessions')
-      .insert(insertData)
+      .insert({
+        campaign_id: campaignId,
+        session_number: nextNumber,
+        status: 'planned',
+      })
       .select()
       .single();
 
     if (!error && data) {
       setSessions([data, ...sessions]);
-
-      // Fire-and-forget: auto-generate the session prep brief
+      // Fire-and-forget: auto-generate the session prep brief in the background
       fetch(`${API_URL}/api/session-prep`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          session_id: data.id,
-          campaign_id: campaignId,
-          dm_prep_notes: prepNotes.trim() || null,
-        }),
+        body: JSON.stringify({ session_id: data.id, campaign_id: campaignId }),
       }).catch(() => {});
-
-      setNewTitle('');
-      setPrepNotes('');
-      setShowCreate(false);
-
-      // Navigate to the Prep Wizard for new sessions
       setPrepSessionId(data.id);
     }
     setCreating(false);
   }
 
-  // Prep Wizard — launched after session creation (DM only)
+  async function deleteSession(id) {
+    setDeleting(true);
+    // Delete orphaned session notes (not a FK, won't cascade)
+    await supabase
+      .from('notes')
+      .delete()
+      .eq('related_entity_type', 'session')
+      .eq('related_entity_id', id);
+    // Delete the session itself (loot + attendees cascade)
+    await supabase.from('sessions').delete().eq('id', id);
+    setSessions((prev) => prev.filter((s) => s.id !== id));
+    setConfirmDeleteId(null);
+    setDeleting(false);
+  }
+
+  // Scriptorium — launched after session creation (DM only)
   if (prepSessionId) {
     return (
       <SessionPrep
@@ -133,38 +131,13 @@ export default function Sessions({ campaignId, session, role }) {
         {role === 'dm' && (
           <button
             style={styles.button}
-            onClick={() => setShowCreate(!showCreate)}
+            onClick={createSession}
+            disabled={creating}
           >
-            {showCreate ? 'Cancel' : 'New Session'}
+            {creating ? 'Creating...' : 'New Session'}
           </button>
         )}
       </div>
-
-      {role === 'dm' && showCreate && (
-        <div style={styles.createForm}>
-          <input
-            style={styles.input}
-            value={newTitle}
-            onChange={(e) => setNewTitle(e.target.value)}
-            placeholder="Session title..."
-            autoFocus
-          />
-          <textarea
-            style={styles.prepNotesInput}
-            value={prepNotes}
-            onChange={(e) => setPrepNotes(e.target.value)}
-            placeholder="Any plans for this session? e.g., moving to a new location, introducing an NPC..."
-            rows={3}
-          />
-          <button
-            style={styles.button}
-            onClick={createSession}
-            disabled={creating || !newTitle.trim()}
-          >
-            {creating ? 'Creating...' : 'Create'}
-          </button>
-        </div>
-      )}
 
       {loading ? (
         <p style={styles.muted}>Loading sessions...</p>
@@ -180,34 +153,75 @@ export default function Sessions({ campaignId, session, role }) {
       ) : (
         <div style={styles.list}>
           {sessions.map((s) => (
-            <button
-              key={s.id}
-              style={styles.sessionCard}
-              onClick={() => setSelectedId(s.id)}
-            >
-              <div style={styles.cardTop}>
-                <span style={styles.number}>Session {s.session_number}</span>
-                <span
-                  style={{
-                    ...styles.statusBadge,
-                    color: statusColors[s.status] || 'var(--ink-faint)',
-                  }}
-                >
-                  {s.status}
-                </span>
-              </div>
-              <span style={styles.sessionTitle}>{s.title || 'Untitled'}</span>
-              {s.played_date && (
-                <span style={styles.date}>{s.played_date}</span>
+            <div key={s.id} style={styles.sessionCard}>
+              {confirmDeleteId === s.id ? (
+                /* Inline delete confirmation */
+                <div style={styles.deleteConfirm}>
+                  <span style={styles.deleteQuestion}>
+                    Delete &ldquo;{s.title || `Session ${s.session_number}`}&rdquo;? This cannot be undone.
+                  </span>
+                  <div style={styles.deleteActions}>
+                    <button
+                      style={styles.deleteConfirmBtn}
+                      onClick={() => deleteSession(s.id)}
+                      disabled={deleting}
+                    >
+                      {deleting ? 'Deleting...' : 'Delete'}
+                    </button>
+                    <button
+                      style={styles.deleteCancelBtn}
+                      onClick={() => setConfirmDeleteId(null)}
+                      disabled={deleting}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* Normal card content */
+                <>
+                  <div
+                    style={styles.cardClickArea}
+                    onClick={() => setSelectedId(s.id)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => e.key === 'Enter' && setSelectedId(s.id)}
+                  >
+                    <div style={styles.cardTop}>
+                      <span style={styles.number}>Session {s.session_number}</span>
+                      <span
+                        style={{
+                          ...styles.statusBadge,
+                          color: statusColors[s.status] || 'var(--ink-faint)',
+                        }}
+                      >
+                        {s.status}
+                      </span>
+                    </div>
+                    <span style={styles.sessionTitle}>{s.title || 'Untitled'}</span>
+                    {s.played_date && (
+                      <span style={styles.date}>{s.played_date}</span>
+                    )}
+                    {s.summary && (
+                      <p style={styles.preview}>
+                        {s.summary.length > 120
+                          ? s.summary.substring(0, 120) + '...'
+                          : s.summary}
+                      </p>
+                    )}
+                  </div>
+                  {role === 'dm' && (
+                    <button
+                      style={styles.deleteBtn}
+                      onClick={() => setConfirmDeleteId(s.id)}
+                      title="Delete session"
+                    >
+                      ×
+                    </button>
+                  )}
+                </>
               )}
-              {s.summary && (
-                <p style={styles.preview}>
-                  {s.summary.length > 120
-                    ? s.summary.substring(0, 120) + '...'
-                    : s.summary}
-                </p>
-              )}
-            </button>
+            </div>
           ))}
         </div>
       )}
@@ -266,18 +280,6 @@ const styles = {
     fontFamily: 'var(--font-body)',
     color: 'var(--ink-medium)',
   },
-  prepNotesInput: {
-    padding: '0.6rem 0.75rem',
-    borderRadius: '2px',
-    border: '1px solid var(--border-medium)',
-    backgroundColor: 'var(--card-bg)',
-    fontSize: '0.85rem',
-    outline: 'none',
-    resize: 'vertical',
-    fontFamily: 'var(--font-body)',
-    color: 'var(--ink-medium)',
-    lineHeight: 1.5,
-  },
   muted: {
     color: 'var(--ink-faint)',
     fontSize: '0.9rem',
@@ -300,15 +302,73 @@ const styles = {
     gap: '0.5rem',
   },
   sessionCard: {
+    position: 'relative',
+    borderBottom: '1px solid var(--border-light)',
+    display: 'flex',
+    alignItems: 'stretch',
+  },
+  cardClickArea: {
+    flex: 1,
     display: 'flex',
     flexDirection: 'column',
     gap: '0.25rem',
     padding: '1rem',
-    borderBottom: '1px solid var(--border-light)',
     backgroundColor: 'transparent',
     textAlign: 'left',
     cursor: 'pointer',
-    width: '100%',
+    fontFamily: 'var(--font-body)',
+    border: 'none',
+    outline: 'none',
+  },
+  deleteBtn: {
+    flexShrink: 0,
+    alignSelf: 'flex-start',
+    marginTop: '0.9rem',
+    marginRight: '0.75rem',
+    background: 'none',
+    border: 'none',
+    color: 'var(--ink-faint)',
+    cursor: 'pointer',
+    fontSize: '1.1rem',
+    lineHeight: 1,
+    padding: '0.1rem 0.25rem',
+    borderRadius: '2px',
+    fontFamily: 'var(--font-body)',
+  },
+  deleteConfirm: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.5rem',
+    padding: '0.9rem 1rem',
+  },
+  deleteQuestion: {
+    fontSize: '0.875rem',
+    color: 'var(--ink-medium)',
+    fontFamily: 'var(--font-body)',
+  },
+  deleteActions: {
+    display: 'flex',
+    gap: '0.5rem',
+  },
+  deleteConfirmBtn: {
+    padding: '0.3rem 0.75rem',
+    backgroundColor: '#c0392b',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '2px',
+    cursor: 'pointer',
+    fontSize: '0.8rem',
+    fontFamily: 'var(--font-body)',
+  },
+  deleteCancelBtn: {
+    padding: '0.3rem 0.75rem',
+    background: 'none',
+    border: '1px solid var(--border-medium)',
+    color: 'var(--ink-medium)',
+    borderRadius: '2px',
+    cursor: 'pointer',
+    fontSize: '0.8rem',
     fontFamily: 'var(--font-body)',
   },
   cardTop: {

@@ -47,12 +47,15 @@ export default function Treasury({ campaignId, session, role }) {
   const searchDebounceRef = useRef(null);
 
   async function fetchAll() {
+    let iQuery = supabase
+      .from('treasury_items')
+      .select('*')
+      .eq('campaign_id', campaignId);
+    if (role !== 'dm') iQuery = iQuery.eq('player_visible', true);
+    iQuery = iQuery.order('created_at', { ascending: false });
+
     const [iRes, cRes, sRes] = await Promise.all([
-      supabase
-        .from('treasury_items')
-        .select('*')
-        .eq('campaign_id', campaignId)
-        .order('created_at', { ascending: false }),
+      iQuery,
       supabase
         .from('characters')
         .select('id, name, type')
@@ -68,6 +71,18 @@ export default function Treasury({ campaignId, session, role }) {
     if (cRes.data) setCharacters(cRes.data);
     if (sRes.data) setSessions(sRes.data);
     setLoading(false);
+  }
+
+  async function updateTreasuryVisibility(id, newVisible) {
+    const { error } = await supabase
+      .from('treasury_items')
+      .update({ player_visible: newVisible })
+      .eq('id', id);
+    if (!error) {
+      setItems((prev) =>
+        prev.map((i) => (i.id === id ? { ...i, player_visible: newVisible } : i)),
+      );
+    }
   }
 
   useEffect(() => {
@@ -651,6 +666,9 @@ export default function Treasury({ campaignId, session, role }) {
                         †
                       </span>
                     )}
+                    {role === 'dm' && !item.player_visible && (
+                      <span style={s.hiddenBadge}>hidden</span>
+                    )}
                   </div>
                   {item.description && (
                     <p
@@ -672,6 +690,22 @@ export default function Treasury({ campaignId, session, role }) {
                     </span>
                   )}
                 </div>
+                {role === 'dm' && (
+                  <button
+                    style={item.player_visible ? s.hideBtn : s.revealBtn}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      updateTreasuryVisibility(item.id, !item.player_visible);
+                    }}
+                    title={
+                      item.player_visible
+                        ? 'Hide from players'
+                        : 'Reveal to players'
+                    }
+                  >
+                    {item.player_visible ? 'Hide' : 'Reveal'}
+                  </button>
+                )}
               </div>
             </div>
           );
@@ -804,7 +838,22 @@ function ItemDetail({
               </div>
             </div>
             {canEdit && (
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                {role === 'dm' && (
+                  <button
+                    style={item.player_visible ? s.hideBtn : s.revealBtn}
+                    onClick={() =>
+                      onUpdate(item.id, { player_visible: !item.player_visible })
+                    }
+                    title={
+                      item.player_visible
+                        ? 'Hide from players'
+                        : 'Reveal to players'
+                    }
+                  >
+                    {item.player_visible ? 'Hide from Players' : 'Reveal to Players'}
+                  </button>
+                )}
                 <button style={s.editBtn} onClick={startEdit}>
                   Edit
                 </button>
@@ -1215,6 +1264,39 @@ const s = {
     fontWeight: 600,
     padding: '0.15rem 0.4rem',
     borderRadius: '1px',
+  },
+  hiddenBadge: {
+    fontSize: '0.62rem',
+    fontVariant: 'small-caps',
+    letterSpacing: '0.04em',
+    padding: '0.1rem 0.35rem',
+    backgroundColor: 'var(--sidebar-bg)',
+    color: 'var(--ink-faint)',
+    border: '1px solid var(--border-light)',
+    borderRadius: '2px',
+    fontFamily: 'var(--font-heading)',
+  },
+  revealBtn: {
+    padding: '0.2rem 0.55rem',
+    borderRadius: '2px',
+    backgroundColor: 'var(--accent)',
+    color: '#fff',
+    border: 'none',
+    fontSize: '0.72rem',
+    cursor: 'pointer',
+    fontFamily: 'var(--font-body)',
+    flexShrink: 0,
+  },
+  hideBtn: {
+    padding: '0.2rem 0.55rem',
+    borderRadius: '2px',
+    backgroundColor: 'transparent',
+    border: '1px solid var(--border-medium)',
+    color: 'var(--ink-faint)',
+    fontSize: '0.72rem',
+    cursor: 'pointer',
+    fontFamily: 'var(--font-body)',
+    flexShrink: 0,
   },
   searchSection: {
     display: 'flex',

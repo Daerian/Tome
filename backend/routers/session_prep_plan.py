@@ -1,15 +1,23 @@
 """
-Session Prep Plan router — AI-powered encounter and session planning for DMs.
+Session Prep Plan router — AI-powered encounter drafting for the Scriptorium.
 
-The DM configures the session on the frontend (tone, encounter mix, selected
-objectives) and this endpoint generates a structured plan containing:
-  - Concrete encounter suggestions (roleplay / combat / puzzle)
-  - NPC highlights relevant to this session
-  - Loot suggestions tied to specific encounters
+Three endpoints:
 
-Uses PydanticAI structured output so the frontend receives clean JSON rather
-than prose that needs post-processing.  The result is persisted back to
-sessions.prep_config for the DM to edit.
+  POST /api/session-routes
+      Returns 3 suggested session direction hooks based on campaign context.
+      The DM selects one (or writes a custom direction) to steer encounters.
+
+  POST /api/session-prep-plan
+      Given the DM's planning parameters (per-type tone, encounter mix,
+      selected objectives, optional session direction), generates 5 candidate
+      encounters for every encounter type requested.
+      Also generates NPC highlights and loot suggestions.
+      Persists the full candidate set to sessions.prep_config.
+
+  POST /api/session-prep-encounter
+      Regenerates a single encounter card in-place.  Accepts an optional DM
+      hint to steer the output.  Returns one EncounterSuggestion; the frontend
+      swaps it into the candidate list at the relevant index.
 """
 
 import json
@@ -35,7 +43,7 @@ model = AnthropicModel(
 )
 
 # ---------------------------------------------------------------------------
-# Pydantic models — request and structured AI output
+# Shared Pydantic models
 # ---------------------------------------------------------------------------
 
 
@@ -45,18 +53,17 @@ class EncounterMix(BaseModel):
     puzzles: int = 1
 
 
+class EncounterTone(BaseModel):
+    """Per-encounter-type tone — each type can have a different intensity."""
+    rp: Literal["light", "moderate", "intense"] = "moderate"
+    combat: Literal["light", "moderate", "intense"] = "moderate"
+    puzzle: Literal["light", "moderate", "intense"] = "moderate"
+
+
 class SelectedObjective(BaseModel):
     id: str
     type: Literal["mission", "story_beat"]
     title: str
-
-
-class PrepPlanRequest(BaseModel):
-    session_id: str
-    campaign_id: str
-    tone: Literal["light", "moderate", "intense"] = "moderate"
-    encounter_mix: EncounterMix = EncounterMix()
-    selected_objectives: list[SelectedObjective] = []
 
 
 class EncounterSuggestion(BaseModel):
@@ -67,6 +74,7 @@ class EncounterSuggestion(BaseModel):
     enemies: str | None = None
     difficulty: Literal["easy", "medium", "hard", "deadly"] | None = None
     loot_hint: str | None = None
+    location: str | None = None
 
 
 class NPCHighlight(BaseModel):
@@ -82,26 +90,82 @@ class LootSuggestion(BaseModel):
     source: str
 
 
-class PrepPlanOutput(BaseModel):
-    encounters: list[EncounterSuggestion]
-    npc_highlights: list[NPCHighlight]
-    loot_suggestions: list[LootSuggestion]
+# ---------------------------------------------------------------------------
+# /api/session-routes  request + output models
+# ---------------------------------------------------------------------------
+
+
+class SessionRoute(BaseModel):
+    title: str
+    description: str
+
+
+class RouteSuggestionsOutput(BaseModel):
+    routes: list[SessionRoute]
+
+
+class RouteRequest(BaseModel):
+    session_id: str
+    campaign_id: str
 
 
 # ---------------------------------------------------------------------------
-# Context builder — reuses the same campaign data fetch as session_prep.py
+# /api/session-prep-plan  request + output models
+# ---------------------------------------------------------------------------
+
+
+class PrepPlanRequest(BaseModel):
+    session_id: str
+    campaign_id: str
+    encounter_tone: EncounterTone = EncounterTone()
+    encounter_mix: EncounterMix = EncounterMix()
+    selected_objectives: list[SelectedObjective] = []
+    session_direction: str | None = None
+
+
+class PrepCandidatesOutput(BaseModel):
+    """5 candidates per requested encounter type; empty list for skipped types."""
+
+    rp_candidates: list[EncounterSuggestion] = []
+    combat_candidates: list[EncounterSuggestion] = []
+    puzzle_candidates: list[EncounterSuggestion] = []
+    npc_highlights: list[NPCHighlight] = []
+    loot_suggestions: list[LootSuggestion] = []
+
+
+# ---------------------------------------------------------------------------
+# /api/session-prep-encounter  request + output models
+# ---------------------------------------------------------------------------
+
+
+class EncounterRewriteRequest(BaseModel):
+    session_id: str
+    campaign_id: str
+    type: Literal["rp", "combat", "puzzle"]
+    encounter_tone: EncounterTone = EncounterTone()
+    selected_objectives: list[SelectedObjective] = []
+    hint: str | None = None
+    existing_titles: list[str] = []
+    session_direction: str | None = None
+
+
+class SingleEncounterOutput(BaseModel):
+    encounter: EncounterSuggestion
+
+
+# ---------------------------------------------------------------------------
+# Context builder (shared between all three endpoints)
 # ---------------------------------------------------------------------------
 
 
 def build_plan_context(
     session_id: str,
     campaign_id: str,
-    tone: str,
+    encounter_tone: EncounterTone,
     encounter_mix: EncounterMix,
     selected_objectives: list[SelectedObjective],
+    session_direction: str | None = None,
 ) -> str | None:
-    """Fetch campaign data and assemble a context string for encounter planning."""
-
     campaign_res = (
         sb.table("campaigns")
         .select("name, description, system")
@@ -126,7 +190,6 @@ def build_plan_context(
     c = campaign_res.data
     s = session_res.data
 
-    # Previous completed sessions for narrative context
     prev_sessions_res = (
         sb.table("sessions")
         .select("session_number, title, summary, in_world_start_date")
@@ -136,8 +199,6 @@ def build_plan_context(
         .limit(3)
         .execute()
     )
-
-    # Attending PCs
     attendees_res = (
         sb.table("session_attendees")
         .select(
@@ -146,16 +207,12 @@ def build_plan_context(
         .eq("session_id", session_id)
         .execute()
     )
-
-    # All characters (NPCs etc.)
     npcs_res = (
         sb.table("characters")
         .select("id, name, type, race, class, level, description, status")
         .eq("campaign_id", campaign_id)
         .execute()
     )
-
-    # All active missions — we'll highlight the selected ones
     missions_res = (
         sb.table("missions")
         .select("id, title, description, type, status, priority, reward_description")
@@ -163,8 +220,6 @@ def build_plan_context(
         .in_("status", ["available", "active"])
         .execute()
     )
-
-    # Active story beats
     beats_res = (
         sb.table("story_beats")
         .select("id, title, description, type, status")
@@ -172,16 +227,12 @@ def build_plan_context(
         .in_("status", ["planted", "active"])
         .execute()
     )
-
-    # Locations for setting context
     locations_res = (
         sb.table("locations")
         .select("id, name, type, description, parent_location_id")
         .eq("campaign_id", campaign_id)
         .execute()
     )
-
-    # Factions
     factions_res = (
         sb.table("factions")
         .select("name, type, goals, alignment")
@@ -190,7 +241,6 @@ def build_plan_context(
         .execute()
     )
 
-    # Build lookup maps
     all_chars = {ch["id"]: ch for ch in (npcs_res.data or [])}
     for a in attendees_res.data or []:
         ch = a.get("characters")
@@ -203,8 +253,13 @@ def build_plan_context(
         loc = loc_map.get(lid)
         return loc["name"] if loc else "Unknown"
 
-    # Build selected objective IDs for quick lookup
     selected_ids = {obj.id for obj in selected_objectives}
+
+    tone_desc = {
+        "light": "Light-hearted — comedy, exploration, low stakes",
+        "moderate": "Balanced — drama, action, lighter moments",
+        "intense": "Intense — high tension, difficult choices, real consequences",
+    }
 
     lines: list[str] = []
 
@@ -222,26 +277,28 @@ def build_plan_context(
         lines.append(f"DM Notes: {s['dm_notes']}")
     lines.append("")
 
-    # DM's planning parameters — highest priority
     lines.append("=== SESSION PLANNING PARAMETERS ===")
-    tone_descriptions = {
-        "light": "Light-hearted and fun — focus on comedy, exploration, and low-stakes encounters",
-        "moderate": "Balanced mix of drama, action, and lighter moments",
-        "intense": "High tension and stakes — dramatic confrontations, difficult choices, consequences",
-    }
-    lines.append(f"Tone: {tone.upper()} — {tone_descriptions.get(tone, tone)}")
+    lines.append(
+        f"Roleplay Tone: {encounter_tone.rp.upper()} — {tone_desc[encounter_tone.rp]}"
+    )
+    lines.append(
+        f"Combat Tone: {encounter_tone.combat.upper()} — {tone_desc[encounter_tone.combat]}"
+    )
+    lines.append(
+        f"Puzzle/Exploration Tone: {encounter_tone.puzzle.upper()} — {tone_desc[encounter_tone.puzzle]}"
+    )
     lines.append(
         f"Encounter Mix: {encounter_mix.rp} roleplay, "
         f"{encounter_mix.combat} combat, {encounter_mix.puzzles} puzzle/exploration"
     )
-
     if selected_objectives:
-        lines.append("DM-Selected Objectives for this session:")
+        lines.append("DM-Selected Objectives:")
         for obj in selected_objectives:
             lines.append(f"  - [{obj.type}] {obj.title}")
+    if session_direction:
+        lines.append(f"Session Direction (chosen by DM): {session_direction}")
     lines.append("")
 
-    # Recent session history for narrative context
     prev = list(reversed(prev_sessions_res.data or []))
     if prev:
         lines.append("=== RECENT SESSION HISTORY ===")
@@ -252,13 +309,11 @@ def build_plan_context(
             )
         lines.append("")
 
-    # Existing prep brief for context (if already generated)
     if s.get("prep_brief"):
-        lines.append("=== EXISTING PREP BRIEF (for context) ===")
-        lines.append(s["prep_brief"][:1500])  # cap to avoid token bloat
+        lines.append("=== EXISTING PREP BRIEF (context only) ===")
+        lines.append(s["prep_brief"][:1500])
         lines.append("")
 
-    # Attending PCs
     attendees = attendees_res.data or []
     lines.append("=== ATTENDING CHARACTERS ===")
     if attendees:
@@ -271,13 +326,12 @@ def build_plan_context(
                     f"{ch.get('description', '')}"
                 )
     else:
-        lines.append("No attendees registered yet — plan for the full party.")
+        lines.append("No attendees registered — plan for the full party.")
     lines.append("")
 
-    # All NPCs (so the AI can suggest who is relevant)
     npcs = [ch for ch in (npcs_res.data or []) if ch.get("type") != "pc"]
     if npcs:
-        lines.append("=== AVAILABLE NPCs & COMPANIONS ===")
+        lines.append("=== AVAILABLE NPCs ===")
         for npc in npcs:
             lines.append(
                 f"- {npc['name']} (id:{npc['id']}, {npc['type']}, "
@@ -286,33 +340,29 @@ def build_plan_context(
             )
         lines.append("")
 
-    # Missions — highlight selected ones
     missions = missions_res.data or []
     if missions:
         lines.append("=== ACTIVE MISSIONS ===")
         for m in missions:
-            marker = " *** SELECTED FOR THIS SESSION ***" if m["id"] in selected_ids else ""
+            marker = " *** SELECTED ***" if m["id"] in selected_ids else ""
             lines.append(
-                f"- [{m['priority']}] {m['title']}{marker}: "
-                f"{m.get('description', '')}"
+                f"- [{m['priority']}] {m['title']}{marker}: {m.get('description', '')}"
             )
             if m.get("reward_description"):
                 lines.append(f"  Reward: {m['reward_description']}")
         lines.append("")
 
-    # Story beats — highlight selected ones
     beats = beats_res.data or []
     if beats:
         lines.append("=== ACTIVE STORY BEATS ===")
         for b in beats:
-            marker = " *** SELECTED FOR THIS SESSION ***" if b["id"] in selected_ids else ""
+            marker = " *** SELECTED ***" if b["id"] in selected_ids else ""
             lines.append(
                 f"- [{b['type']}, {b['status']}] {b['title']}{marker}: "
                 f"{b.get('description', '')}"
             )
         lines.append("")
 
-    # Locations for setting encounters
     locs = locations_res.data or []
     if locs:
         lines.append("=== LOCATIONS ===")
@@ -326,7 +376,6 @@ def build_plan_context(
             )
         lines.append("")
 
-    # Factions
     factions = factions_res.data or []
     if factions:
         lines.append("=== ACTIVE FACTIONS ===")
@@ -341,78 +390,255 @@ def build_plan_context(
 
 
 # ---------------------------------------------------------------------------
-# System prompt
+# System prompts
 # ---------------------------------------------------------------------------
 
-SESSION_PLAN_SYSTEM_PROMPT = """\
-You are Tome, a D&D session planning assistant for Dungeon Masters.
+ROUTE_SUGGESTIONS_SYSTEM_PROMPT = """\
+You are Tome, a D&D session planning assistant. Given campaign context, \
+suggest exactly 3 distinct possible directions the DM could take for the \
+upcoming session.
 
-Given campaign context and the DM's planning parameters (tone, encounter mix,
-selected objectives), generate a concrete session plan.
+Each route must:
+- Have a short punchy title (3-6 words)
+- Have a 2-3 sentence description — a compelling hook or opening premise
+- Be clearly distinct from the other routes in focus, stakes, and approach
+- Be rooted in the existing campaign lore, NPCs, and unresolved threads
+- Name the inciting event or situation the players will encounter
+- NOT prescribe the outcome — just set the opening direction
+
+Do not invent characters or lore absent from the context.
+"""
+
+CANDIDATES_SYSTEM_PROMPT = """\
+You are Tome, a D&D session planning assistant writing in a Scriptorium — a \
+library of possible encounters for the Dungeon Master to choose from.
+
+Given campaign context and DM planning parameters, generate a catalogue of \
+encounter options:
+
+- For EACH encounter type whose count is greater than zero, produce EXACTLY \
+5 distinct candidate encounters in the corresponding list field.
+- Types with count 0 must have an empty list.
+- Within each type, make candidates meaningfully different from one another \
+(different locations, different NPCs, different hooks, different stakes).
+- Each encounter type has its own tone — the planning parameters specify a \
+separate tone for roleplay, combat, and puzzle/exploration. Apply them.
+- If a Session Direction is provided, use it as the session's creative spine \
+— encounters should support or naturally lead into it.
+- Prioritise objectives marked *** SELECTED ***.
+- For combat candidates: always include enemies and difficulty.
+- For roleplay candidates: always name the NPCs involved.
+- For puzzle candidates: describe the challenge and a possible approach.
+- For every encounter: include a `location` field naming the primary setting (1-4 words). Use named locations from the context where possible.
+- NPC highlights: every NPC likely to appear, with their character_id if known.
+- Loot suggestions: tie each to a named encounter source.
+- Keep descriptions to 2-4 sentences. Do not invent characters or lore absent \
+from the context.
+"""
+
+SINGLE_ENCOUNTER_SYSTEM_PROMPT = """\
+You are Tome, a D&D encounter drafter. Generate a single, self-contained \
+encounter of the requested type, tailored to the campaign context.
 
 Rules:
-- Create EXACTLY the number of encounters specified in the encounter mix
-  (e.g. "2 roleplay, 3 combat, 1 puzzle" = 6 total encounters in that breakdown).
-- Tailor all encounters to the specified tone (light/moderate/intense).
-- Prioritise objectives marked "SELECTED FOR THIS SESSION" — at least one
-  encounter should directly advance each selected objective.
-- For combat encounters specify realistic enemies and a difficulty rating.
-- For roleplay encounters name the NPCs involved (use names from the NPC list).
-- For puzzle/exploration encounters describe the challenge and a possible approach.
-- NPC highlights: list every NPC likely to appear, with a one-line role summary
-  and their character_id if known from the NPC list.
-- Loot suggestions: tie each to a specific encounter and give it a D&D-appropriate
-  category (gold/item/gem/art/magic_item/other).
-- Do not invent characters, locations, or lore not present in the context.
-- Keep descriptions concise (2-4 sentences each).
+- The encounter must differ from any existing titles listed.
+- If the DM provides a hint, treat it as the primary creative direction.
+- If a Session Direction is provided, the encounter should support or tie into it.
+- Apply the tone specified for this encounter type.
+- For combat: include enemies and a difficulty rating.
+- For roleplay: name the NPCs involved.
+- For puzzle/exploration: describe the challenge and a possible approach.
+- Include a `location` field naming the primary setting (1-4 words).
+- Keep the description to 2-4 sentences.
+- Do not invent characters or lore absent from the context.
 """
 
 
 # ---------------------------------------------------------------------------
-# Endpoint
+# Endpoint 1 — suggest 3 session routes
+# ---------------------------------------------------------------------------
+
+
+@router.post("/session-routes")
+async def session_routes(body: RouteRequest):
+    """Generate 3 distinct session direction routes based on campaign context."""
+
+    context = build_plan_context(
+        body.session_id,
+        body.campaign_id,
+        EncounterTone(),
+        EncounterMix(),
+        [],
+    )
+    if not context:
+        return {"error": "Session or campaign not found."}
+
+    agent: Agent[None, RouteSuggestionsOutput] = Agent(
+        model,
+        output_type=RouteSuggestionsOutput,
+        system_prompt=ROUTE_SUGGESTIONS_SYSTEM_PROMPT,
+    )
+
+    result = await agent.run(
+        f"Suggest 3 possible session directions for the DM based on this "
+        f"campaign context:\n\n{context}"
+    )
+
+    return {"routes": [r.model_dump() for r in result.output.routes]}
+
+
+# ---------------------------------------------------------------------------
+# Endpoint 2 — generate full candidate set
 # ---------------------------------------------------------------------------
 
 
 @router.post("/session-prep-plan")
 async def session_prep_plan(body: PrepPlanRequest):
-    """Generate a structured encounter plan and persist it to prep_config."""
+    """Generate 5 encounter candidates per requested type, plus NPCs and loot."""
 
     context = build_plan_context(
         body.session_id,
         body.campaign_id,
-        body.tone,
+        body.encounter_tone,
         body.encounter_mix,
         body.selected_objectives,
+        body.session_direction,
     )
 
     if not context:
         return {"error": "Session or campaign not found."}
 
-    agent: Agent[None, PrepPlanOutput] = Agent(
+    agent: Agent[None, PrepCandidatesOutput] = Agent(
         model,
-        output_type=PrepPlanOutput,
-        system_prompt=SESSION_PLAN_SYSTEM_PROMPT,
+        output_type=PrepCandidatesOutput,
+        system_prompt=CANDIDATES_SYSTEM_PROMPT,
     )
 
     result = await agent.run(
-        f"Generate a session encounter plan using the following campaign context "
-        f"and planning parameters:\n\n{context}"
+        f"Draft the encounter catalogue for this session using the following "
+        f"campaign context and planning parameters:\n\n{context}"
     )
 
-    plan = result.output
+    out = result.output
 
-    # Build the prep_config payload to persist
-    prep_config = {
-        "tone": body.tone,
+    prep_config_update = {
+        "encounter_tone": body.encounter_tone.model_dump(),
         "encounter_mix": body.encounter_mix.model_dump(),
         "selected_objectives": [o.model_dump() for o in body.selected_objectives],
-        "encounters": [e.model_dump() for e in plan.encounters],
-        "npc_highlights": [n.model_dump() for n in plan.npc_highlights],
-        "loot_suggestions": [l.model_dump() for l in plan.loot_suggestions],
+        "session_direction": body.session_direction,
+        "candidates": {
+            "rp": [e.model_dump() for e in out.rp_candidates],
+            "combat": [e.model_dump() for e in out.combat_candidates],
+            "puzzle": [e.model_dump() for e in out.puzzle_candidates],
+        },
+        "npc_highlights": [n.model_dump() for n in out.npc_highlights],
+        "loot_suggestions": [l.model_dump() for l in out.loot_suggestions],
     }
 
-    sb.table("sessions").update({"prep_config": json.dumps(prep_config)}).eq(
-        "id", body.session_id
-    ).execute()
+    sb.table("sessions").update(
+        {"prep_config": json.dumps(prep_config_update)}
+    ).eq("id", body.session_id).execute()
 
-    return {"plan": prep_config}
+    return {"plan": prep_config_update}
+
+
+# ---------------------------------------------------------------------------
+# Endpoint 3 — regenerate a single encounter card
+# ---------------------------------------------------------------------------
+
+
+@router.post("/session-prep-encounter")
+async def session_prep_encounter(body: EncounterRewriteRequest):
+    """Regenerate one encounter card, optionally guided by a DM hint."""
+
+    campaign_res = (
+        sb.table("campaigns")
+        .select("name, description, system")
+        .eq("id", body.campaign_id)
+        .single()
+        .execute()
+    )
+    session_res = (
+        sb.table("sessions")
+        .select("session_number, title, dm_notes, prep_brief")
+        .eq("id", body.session_id)
+        .single()
+        .execute()
+    )
+    npcs_res = (
+        sb.table("characters")
+        .select("id, name, type, description, status")
+        .eq("campaign_id", body.campaign_id)
+        .neq("type", "pc")
+        .execute()
+    )
+
+    c = campaign_res.data or {}
+    s = session_res.data or {}
+
+    # Extract the tone relevant to this encounter type
+    type_tone = {
+        "rp": body.encounter_tone.rp,
+        "combat": body.encounter_tone.combat,
+        "puzzle": body.encounter_tone.puzzle,
+    }[body.type]
+
+    tone_desc = {
+        "light": "light-hearted, low stakes",
+        "moderate": "balanced drama and action",
+        "intense": "high tension, real consequences",
+    }.get(type_tone, type_tone)
+
+    type_label = {
+        "rp": "Roleplay",
+        "combat": "Combat",
+        "puzzle": "Puzzle / Exploration",
+    }[body.type]
+
+    lines = [
+        f"Campaign: {c.get('name', 'Unknown')} ({c.get('system', '5e')})",
+        f"Session {s.get('session_number', '?')}: {s.get('title', 'Untitled')}",
+        f"Encounter type needed: {type_label}",
+        f"Tone for this encounter: {tone_desc}",
+    ]
+
+    if body.session_direction:
+        lines.append(f"Session Direction: {body.session_direction}")
+
+    if body.selected_objectives:
+        lines.append(
+            "Objectives to tie in: "
+            + ", ".join(o.title for o in body.selected_objectives)
+        )
+
+    npcs = npcs_res.data or []
+    if npcs:
+        lines.append(
+            "Available NPCs: "
+            + ", ".join(
+                f"{n['name']} ({n.get('description', '')})" for n in npcs[:10]
+            )
+        )
+
+    if body.existing_titles:
+        lines.append(
+            "Avoid duplicating these existing encounter titles: "
+            + ", ".join(body.existing_titles)
+        )
+
+    if body.hint and body.hint.strip():
+        lines.append(f"\nDM Direction: {body.hint.strip()}")
+
+    context = "\n".join(lines)
+
+    agent: Agent[None, SingleEncounterOutput] = Agent(
+        model,
+        output_type=SingleEncounterOutput,
+        system_prompt=SINGLE_ENCOUNTER_SYSTEM_PROMPT,
+    )
+
+    result = await agent.run(
+        f"Generate one {type_label} encounter for this session:\n\n{context}"
+    )
+
+    return {"encounter": result.output.encounter.model_dump()}
