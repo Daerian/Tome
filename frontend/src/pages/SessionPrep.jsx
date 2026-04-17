@@ -14,6 +14,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { buildScriptoriumPrepItems, mergePrepItems } from '../lib/prepItems';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -464,89 +465,16 @@ export default function SessionPrep({
       ]);
     }
 
-    // Build prep items from selected encounters + NPC highlights
-    const scriptoriumItems = [];
-
-    // NPC highlights → character items
-    const seenNames = new Set();
-    for (const npc of npcHighlights) {
-      if (!seenNames.has(npc.name)) {
-        seenNames.add(npc.name);
-        scriptoriumItems.push({
-          type: 'character',
-          name: npc.name,
-          description: npc.role || null,
-          stats: null,
-          from_scriptorium: true,
-        });
-      }
-    }
-
-    // Selected encounters → location + monster items; selected rp/puzzle → extra npcs
-    for (const encType of ['rp', 'combat', 'puzzle']) {
-      for (const idx of selections[encType]) {
-        const enc = candidates?.[encType]?.[idx];
-        if (!enc) continue;
-
-        // Location
-        if (enc.location) {
-          const locKey = enc.location.toLowerCase();
-          if (!seenNames.has(locKey)) {
-            seenNames.add(locKey);
-            scriptoriumItems.push({
-              type: 'location',
-              name: enc.location,
-              description: enc.title,
-              stats: null,
-              from_scriptorium: true,
-            });
-          }
-        }
-
-        // Monsters (combat only)
-        if (encType === 'combat' && enc.enemies) {
-          const monsterKey = `monster:${enc.enemies}`;
-          if (!seenNames.has(monsterKey)) {
-            seenNames.add(monsterKey);
-            const statsStr = enc.difficulty
-              ? `Difficulty: ${enc.difficulty}`
-              : null;
-            scriptoriumItems.push({
-              type: 'monster',
-              name: enc.enemies,
-              description: enc.title,
-              stats: statsStr,
-              from_scriptorium: true,
-            });
-          }
-        }
-
-        // NPCs from rp/puzzle encounters not already in highlights
-        if (
-          (encType === 'rp' || encType === 'puzzle') &&
-          Array.isArray(enc.npcs_involved)
-        ) {
-          for (const npcName of enc.npcs_involved) {
-            if (!seenNames.has(npcName)) {
-              seenNames.add(npcName);
-              scriptoriumItems.push({
-                type: 'character',
-                name: npcName,
-                description: enc.title,
-                stats: null,
-                from_scriptorium: true,
-              });
-            }
-          }
-        }
-      }
-    }
-
-    // Merge: keep manually-added items, replace scriptorium items
-    const existingManual = (sessionData?.prep_items || []).filter(
-      (it) => !it.from_scriptorium,
+    // Build and merge prep items from Scriptorium selections
+    const scriptoriumItems = buildScriptoriumPrepItems(
+      npcHighlights,
+      candidates,
+      selections,
     );
-    const mergedItems = [...scriptoriumItems, ...existingManual];
+    const mergedItems = mergePrepItems(
+      scriptoriumItems,
+      sessionData?.prep_items,
+    );
 
     await supabase
       .from('sessions')
