@@ -11,6 +11,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import SessionPrep from './SessionPrep';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -24,6 +25,9 @@ export default function SessionDetail({
   const [sessionData, setSessionData] = useState(null);
   const [notes, setNotes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [prepMode, setPrepMode] = useState(false); // open Scriptorium
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // Collapsible sections state
   const [expandedSections, setExpandedSections] = useState({
@@ -83,6 +87,13 @@ export default function SessionDetail({
   }
 
   async function fetchData() {
+    let lootQ = supabase
+      .from('session_loot')
+      .select('*')
+      .eq('session_id', sessionId);
+    if (role !== 'dm') lootQ = lootQ.eq('player_visible', true);
+    lootQ = lootQ.order('created_at', { ascending: true });
+
     const [sessionRes, notesRes, lootRes] = await Promise.all([
       supabase.from('sessions').select('*').eq('id', sessionId).single(),
       supabase
@@ -94,11 +105,7 @@ export default function SessionDetail({
         .eq('related_entity_type', 'session')
         .eq('related_entity_id', sessionId)
         .order('created_at', { ascending: true }),
-      supabase
-        .from('session_loot')
-        .select('*')
-        .eq('session_id', sessionId)
-        .order('created_at', { ascending: true }),
+      lootQ,
     ]);
 
     if (sessionRes.data) {
@@ -312,6 +319,31 @@ export default function SessionDetail({
     }
   }
 
+  async function toggleLootVisibility(id, currentVisible) {
+    const newVisible = !currentVisible;
+    const lootItem = loot.find((l) => l.id === id);
+    const { error } = await supabase
+      .from('session_loot')
+      .update({ player_visible: newVisible })
+      .eq('id', id);
+    if (!error) {
+      setLoot((prev) =>
+        prev.map((l) =>
+          l.id === id ? { ...l, player_visible: newVisible } : l,
+        ),
+      );
+      // Keep the treasury entry in sync for Scriptorium-generated loot
+      if (lootItem?.scriptorium_loot) {
+        await supabase
+          .from('treasury_items')
+          .update({ player_visible: newVisible })
+          .eq('source_session_id', sessionId)
+          .eq('name', lootItem.name)
+          .eq('scriptorium_loot', true);
+      }
+    }
+  }
+
   async function addNote() {
     if (!newNote.trim()) return;
     setAddingNote(true);
@@ -340,6 +372,19 @@ export default function SessionDetail({
     setAddingNote(false);
   }
 
+  async function deleteSession() {
+    setDeleting(true);
+    // Remove orphaned session notes (no FK cascade for generic related_entity_id)
+    await supabase
+      .from('notes')
+      .delete()
+      .eq('related_entity_type', 'session')
+      .eq('related_entity_id', sessionId);
+    // Delete session — loot and attendees cascade automatically
+    await supabase.from('sessions').delete().eq('id', sessionId);
+    onBack();
+  }
+
   if (loading) {
     return (
       <p
@@ -351,6 +396,23 @@ export default function SessionDetail({
       >
         Loading session...
       </p>
+    );
+  }
+
+  // Prep Wizard overlay — DM only
+  if (prepMode) {
+    return (
+      <SessionPrep
+        sessionId={sessionId}
+        campaignId={campaignId}
+        session={session}
+        role={role}
+        onBack={() => {
+          setPrepMode(false);
+          fetchData(); // refresh in case prep_config was saved
+        }}
+        onViewSession={() => setPrepMode(false)}
+      />
     );
   }
 
@@ -383,16 +445,24 @@ export default function SessionDetail({
         </div>
         <div style={styles.statusArea}>
           {role === 'dm' ? (
-            <select
-              style={styles.statusSelect}
-              value={s.status}
-              onChange={(e) => updateStatus(e.target.value)}
-            >
-              <option value="planned">Planned</option>
-              <option value="in_progress">In Progress</option>
-              <option value="completed">Completed</option>
-              <option value="cancelled">Cancelled</option>
-            </select>
+            <>
+              <select
+                style={styles.statusSelect}
+                value={s.status}
+                onChange={(e) => updateStatus(e.target.value)}
+              >
+                <option value="planned">Planned</option>
+                <option value="in_progress">In Progress</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+              <button
+                style={styles.prepWizardBtn}
+                onClick={() => setPrepMode(true)}
+              >
+                Scriptorium
+              </button>
+            </>
           ) : (
             <span style={styles.badge}>{s.status}</span>
           )}
@@ -415,7 +485,21 @@ export default function SessionDetail({
             <>
               {prepBrief ? (
                 <div style={styles.prepPreview}>
-                  <div style={styles.prepContent}>{prepBrief}</div>
+                  <div style={styles.prepContent}>
+                    {prepBrief.split('\n').map((line, i) =>
+                      line.startsWith('## ') ? (
+                        <p key={i} style={styles.prepHeading}>
+                          {line.replace('## ', '')}
+                        </p>
+                      ) : line.trim() ? (
+                        <p key={i} style={styles.prepPara}>
+                          {line}
+                        </p>
+                      ) : (
+                        <br key={i} />
+                      ),
+                    )}
+                  </div>
                   <div style={{ ...styles.editActions, marginTop: '0.75rem' }}>
                     <button
                       style={styles.prepBtn}
@@ -517,6 +601,7 @@ export default function SessionDetail({
                     >
                       <option value="monster">Monster</option>
                       <option value="character">Character / NPC</option>
+                      <option value="location">Location</option>
                     </select>
                     <input
                       style={{ ...styles.noteInput, flex: 1 }}
@@ -843,15 +928,43 @@ export default function SessionDetail({
                           </span>
                         )}
                       </div>
-                      {(role === 'dm' || l.logged_by === session.user.id) && (
-                        <button
-                          style={styles.lootRemoveBtn}
-                          onClick={() => deleteLootItem(l.id)}
-                          title="Remove"
-                        >
-                          &times;
-                        </button>
-                      )}
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.25rem',
+                        }}
+                      >
+                        {role === 'dm' && (
+                          <button
+                            style={{
+                              ...styles.lootVisibilityBtn,
+                              color: l.player_visible
+                                ? 'var(--success)'
+                                : 'var(--ink-faint)',
+                            }}
+                            onClick={() =>
+                              toggleLootVisibility(l.id, l.player_visible)
+                            }
+                            title={
+                              l.player_visible
+                                ? 'Visible to players — click to hide'
+                                : 'Hidden from players — click to reveal'
+                            }
+                          >
+                            {l.player_visible ? 'visible' : 'hidden'}
+                          </button>
+                        )}
+                        {(role === 'dm' || l.logged_by === session.user.id) && (
+                          <button
+                            style={styles.lootRemoveBtn}
+                            onClick={() => deleteLootItem(l.id)}
+                            title="Remove"
+                          >
+                            &times;
+                          </button>
+                        )}
+                      </div>
                     </div>
                     {l.description && (
                       <p
@@ -924,6 +1037,42 @@ export default function SessionDetail({
           </>
         )}
       </section>
+
+      {/* Delete session — DM only */}
+      {role === 'dm' && (
+        <div style={styles.dangerZone}>
+          {confirmDelete ? (
+            <div style={styles.deleteConfirmRow}>
+              <span style={styles.deleteQuestion}>
+                Permanently delete this session and all its loot and notes?
+              </span>
+              <div style={styles.deleteActions}>
+                <button
+                  style={styles.deleteConfirmBtn}
+                  onClick={deleteSession}
+                  disabled={deleting}
+                >
+                  {deleting ? 'Deleting...' : 'Delete Session'}
+                </button>
+                <button
+                  style={styles.deleteCancelBtn}
+                  onClick={() => setConfirmDelete(false)}
+                  disabled={deleting}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              style={styles.deleteSessionBtn}
+              onClick={() => setConfirmDelete(true)}
+            >
+              Delete Session
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -966,6 +1115,19 @@ const styles = {
   statusArea: {
     display: 'flex',
     alignItems: 'center',
+    gap: '0.5rem',
+  },
+  prepWizardBtn: {
+    padding: '0.35rem 0.75rem',
+    borderRadius: '2px',
+    backgroundColor: 'var(--accent)',
+    color: '#fff',
+    border: 'none',
+    fontSize: '0.78rem',
+    fontVariant: 'small-caps',
+    letterSpacing: '0.04em',
+    fontFamily: 'var(--font-heading)',
+    cursor: 'pointer',
   },
   statusSelect: {
     padding: '0.35rem 0.5rem',
@@ -1107,16 +1269,33 @@ const styles = {
     fontFamily: 'var(--font-body)',
   },
   prepPreview: {
-    padding: '1rem',
-    borderRadius: '3px',
-    backgroundColor: 'var(--success-bg)',
-    border: '1px solid var(--border-light)',
+    padding: '0.9rem 1rem 0.9rem 1.1rem',
+    borderRadius: '2px',
+    backgroundColor: 'var(--card-bg)',
+    borderLeft: '3px solid var(--sepia)',
+    border: '1px solid var(--border-medium)',
+    borderLeftWidth: '3px',
+    borderLeftColor: 'var(--sepia)',
   },
   prepContent: {
-    fontSize: '0.9rem',
+    fontSize: '0.875rem',
+    lineHeight: 1.65,
+  },
+  prepHeading: {
+    margin: '0.85rem 0 0.2rem 0',
+    fontSize: '0.78rem',
+    fontWeight: 700,
+    fontVariant: 'small-caps',
+    letterSpacing: '0.07em',
+    color: 'var(--sepia)',
+    fontFamily: 'var(--font-heading)',
+  },
+  prepPara: {
+    margin: '0 0 0.45rem 0',
+    fontSize: '0.875rem',
     color: 'var(--ink-dark)',
-    lineHeight: 1.7,
-    whiteSpace: 'pre-wrap',
+    lineHeight: 1.65,
+    fontFamily: 'var(--font-body)',
   },
   recapPreview: {
     marginTop: '1rem',
@@ -1283,6 +1462,69 @@ const styles = {
     padding: '0 0.3rem',
     fontFamily: 'inherit',
     lineHeight: 1,
+  },
+  lootVisibilityBtn: {
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    fontSize: '0.65rem',
+    padding: '0.1rem 0.3rem',
+    fontFamily: 'var(--font-body)',
+    lineHeight: 1,
+    fontVariant: 'small-caps',
+    letterSpacing: '0.04em',
+    borderRadius: '2px',
+  },
+
+  // Delete / danger zone
+  dangerZone: {
+    marginTop: '2rem',
+    paddingTop: '1.25rem',
+    borderTop: '1px solid var(--border-light)',
+  },
+  deleteSessionBtn: {
+    background: 'none',
+    border: '1px solid var(--border-medium)',
+    color: 'var(--ink-faint)',
+    cursor: 'pointer',
+    fontSize: '0.8rem',
+    padding: '0.35rem 0.85rem',
+    borderRadius: '2px',
+    fontFamily: 'var(--font-body)',
+  },
+  deleteConfirmRow: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.6rem',
+  },
+  deleteQuestion: {
+    fontSize: '0.875rem',
+    color: 'var(--ink-medium)',
+    fontFamily: 'var(--font-body)',
+  },
+  deleteActions: {
+    display: 'flex',
+    gap: '0.5rem',
+  },
+  deleteConfirmBtn: {
+    padding: '0.35rem 0.85rem',
+    backgroundColor: '#c0392b',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '2px',
+    cursor: 'pointer',
+    fontSize: '0.8rem',
+    fontFamily: 'var(--font-body)',
+  },
+  deleteCancelBtn: {
+    padding: '0.35rem 0.85rem',
+    background: 'none',
+    border: '1px solid var(--border-medium)',
+    color: 'var(--ink-medium)',
+    borderRadius: '2px',
+    cursor: 'pointer',
+    fontSize: '0.8rem',
+    fontFamily: 'var(--font-body)',
   },
 };
 

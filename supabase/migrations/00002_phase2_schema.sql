@@ -114,6 +114,7 @@ create table public.sessions (
   xp_awarded          integer,
   prep_brief          text,
   prep_items          jsonb       not null default '[]'::jsonb,
+  prep_config         jsonb,
   created_at          timestamptz not null default now(),
   updated_at          timestamptz not null default now()
 );
