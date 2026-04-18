@@ -1,0 +1,240 @@
+"""
+Soundboard router for DM audio playback in Tome.
+
+Phase 1 (MVP): exposes a catalog endpoint and an audio proxy endpoint.
+
+Catalog: fetches and caches the public Tabletop Audio JSON feed
+(tabletopaudio.com/tta_data), normalizes tracks, and rewrites all audio
+URLs to go through /api/soundboard/proxy.
+
+Proxy: required because the Tabletop Audio CDN uses split hotlink protection.
+Newer tracks (key >= ~371) are open to any request, but older tracks require
+a Referer header pointing to tabletopaudio.com or they return 403. Browser
+audio elements never send that Referer for cross-origin requests, so the
+backend proxies the request and injects the header. The proxy validates the
+target host before forwarding to prevent SSRF.
+"""
+
+import time
+from urllib.parse import unquote, urlencode, urlparse
+
+import httpx
+from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import StreamingResponse
+
+router = APIRouter()
+
+TABLETOP_AUDIO_CATALOG_URL = "https://tabletopaudio.com/tta_data"
+ALLOWED_AUDIO_HOST = "sounds.tabletopaudio.com"
+PROXY_REFERER = "https://tabletopaudio.com/"
+CACHE_TTL_SECONDS = 24 * 60 * 60
+
+# In-memory catalog cache. Keyed by "fetched_at" (float timestamp) and
+# "tracks" (list of normalized dicts). Survives across requests for the
+# lifetime of the process; refreshed once per day.
+_catalog_cache: dict[str, object] = {
+    "fetched_at": 0.0,
+    "tracks": [],
+}
+
+
+# ---------------------------------------------------------------------------
+# Catalog helpers
+# ---------------------------------------------------------------------------
+
+
+def _proxy_url(original_url: str) -> str:
+    """Return a relative proxy URL for the given CDN audio URL."""
+    return f"/api/soundboard/proxy?{urlencode({'url': original_url})}"
+
+
+def _normalize(track: dict) -> dict:
+    """Map a raw Tabletop Audio track dict into the normalized shape.
+
+    The raw feed uses "track_genre" (list) and "tags" (list of
+    comma-separated strings in older entries, plain strings in newer ones).
+    Both are flattened into clean lists here so callers never need to know
+    about the source format.
+    """
+    key = track.get("key")
+    genres_raw = track.get("track_genre") or []
+    tags_raw = track.get("tags") or []
+
+    genres = [g.strip() for g in genres_raw if isinstance(g, str) and g.strip()]
+
+    # Tags may arrive as a list of comma-separated strings or plain strings.
+    tags: list[str] = []
+    if isinstance(tags_raw, list):
+        for t in tags_raw:
+            if isinstance(t, str):
+                tags.extend(part.strip() for part in t.split(",") if part.strip())
+    elif isinstance(tags_raw, str):
+        tags.extend(part.strip() for part in tags_raw.split(",") if part.strip())
+
+    original_url = track.get("link") or ""
+    return {
+        "id": f"tabletop_audio:{key}",
+        "source": "tabletop_audio",
+        "external_id": str(key) if key is not None else "",
+        "title": track.get("track_title") or "Untitled",
+        # Rewrite to the proxy so the CDN Referer check is handled server-side.
+        "url": _proxy_url(original_url) if original_url else "",
+        "track_type": track.get("track_type") or "",
+        "genres": genres,
+        "tags": tags,
+        "flavor": track.get("flavor_text") or "",
+        "image_url": track.get("large_image") or track.get("small_image") or "",
+        "is_new": bool(track.get("new")),
+    }
+
+
+async def _fetch_catalog() -> list[dict]:
+    """Return the normalized catalog, refreshing from upstream when the TTL expires.
+
+    On upstream failure the last cached payload is returned so the UI stays
+    usable during outages. Returns an empty list only on the very first
+    request if the upstream is unreachable.
+    """
+    now = time.time()
+    fetched_at = float(_catalog_cache.get("fetched_at") or 0.0)
+    cached_tracks = _catalog_cache.get("tracks") or []
+
+    if cached_tracks and (now - fetched_at) < CACHE_TTL_SECONDS:
+        return cached_tracks  # type: ignore[return-value]
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            res = await client.get(
+                TABLETOP_AUDIO_CATALOG_URL,
+                headers={"Accept": "application/json"},
+            )
+            res.raise_for_status()
+            data = res.json()
+    except (httpx.HTTPError, ValueError):
+        return cached_tracks  # type: ignore[return-value]
+
+    raw_tracks = data.get("tracks") if isinstance(data, dict) else data
+    if not isinstance(raw_tracks, list):
+        return cached_tracks  # type: ignore[return-value]
+
+    normalized = [_normalize(t) for t in raw_tracks if isinstance(t, dict)]
+    _catalog_cache["fetched_at"] = now
+    _catalog_cache["tracks"] = normalized
+    return normalized
+
+
+# ---------------------------------------------------------------------------
+# Endpoints
+# ---------------------------------------------------------------------------
+
+
+@router.get("/soundboard/catalog")
+async def get_catalog():
+    """Return the cached, normalized Tabletop Audio catalog.
+
+    All track ``url`` fields point to ``/api/soundboard/proxy`` so the
+    frontend never contacts the CDN directly. This avoids the
+    hotlink-protection 403 that affects older tracks.
+    """
+    tracks = await _fetch_catalog()
+    if not tracks:
+        raise HTTPException(
+            status_code=503,
+            detail="Soundboard catalog is temporarily unavailable.",
+        )
+
+    return {
+        "source": "tabletop_audio",
+        "attribution": {
+            "name": "Tabletop Audio",
+            "url": "https://tabletopaudio.com/",
+            "note": "Free ambiences by Tabletop Audio. Please consider donating.",
+        },
+        "count": len(tracks),
+        "tracks": tracks,
+    }
+
+
+@router.get("/soundboard/proxy")
+async def proxy_audio(url: str, request: Request):
+    """Stream an audio file from the Tabletop Audio CDN.
+
+    Injects ``Referer: https://tabletopaudio.com/`` to satisfy the CDN
+    hotlink protection on older tracks. Validates that the target host is
+    exactly ``sounds.tabletopaudio.com`` before forwarding to prevent SSRF.
+
+    Passes through ``Range`` headers from the client so browser seeking works.
+    """
+    decoded = unquote(url)
+    parsed = urlparse(decoded)
+
+    if parsed.hostname != ALLOWED_AUDIO_HOST:
+        raise HTTPException(status_code=400, detail="Invalid audio source host.")
+
+    upstream_headers = {
+        "User-Agent": "Mozilla/5.0 (compatible; Tome/1.0)",
+        "Referer": PROXY_REFERER,
+        "Accept": "audio/*,*/*",
+    }
+    if "range" in request.headers:
+        upstream_headers["Range"] = request.headers["range"]
+
+    async def _stream():
+        async with (
+            httpx.AsyncClient(timeout=60.0) as client,
+            client.stream(
+                "GET", decoded, headers=upstream_headers, follow_redirects=True
+            ) as resp,
+        ):
+            # Stash response metadata on the function object so the caller
+            # can read status and headers before consuming the body chunks.
+            _stream.status_code = resp.status_code
+            _stream.headers = resp.headers
+            async for chunk in resp.aiter_bytes(chunk_size=8192):
+                yield chunk
+
+    gen = _stream()
+    # Advance the generator to the first yield so that _stream.status_code
+    # and _stream.headers are populated before we build the response object.
+    try:
+        first_chunk = await gen.__anext__()
+    except StopAsyncIteration:
+        first_chunk = None
+    except httpx.RequestError as exc:
+        raise HTTPException(
+            status_code=502, detail=f"Audio fetch failed: {exc}"
+        ) from exc
+
+    status_code = getattr(_stream, "status_code", 200)
+    resp_headers = getattr(_stream, "headers", {})
+
+    if status_code == 403:
+        raise HTTPException(status_code=404, detail="Track unavailable.")
+    if status_code not in (200, 206):
+        raise HTTPException(status_code=502, detail=f"Upstream returned {status_code}")
+
+    content_type = resp_headers.get("content-type", "audio/mpeg")
+    content_length = resp_headers.get("content-length")
+    content_range = resp_headers.get("content-range")
+
+    out_headers: dict[str, str] = {
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "public, max-age=86400",
+    }
+    if content_length:
+        out_headers["Content-Length"] = content_length
+    if content_range:
+        out_headers["Content-Range"] = content_range
+
+    async def _with_first(first, rest):
+        if first is not None:
+            yield first
+        async for chunk in rest:
+            yield chunk
+
+    return StreamingResponse(
+        _with_first(first_chunk, gen),
+        status_code=status_code,
+        headers=out_headers,
+        media_type=content_type,
+    )
