@@ -17,6 +17,7 @@ import Wiki from './Wiki';
 import Timeline from './Timeline';
 import Chat from './Chat';
 import Reference from './Reference';
+import Soundboard from './Soundboard';
 import AdventureViewer from './AdventureViewer';
 
 export default function CampaignView({ session }) {
@@ -223,6 +224,18 @@ export default function CampaignView({ session }) {
             >
               D&D Ref
             </button>
+            {role === 'dm' && (
+              <button
+                style={
+                  rightTab === 'soundboard'
+                    ? styles.panelTabActive
+                    : styles.panelTab
+                }
+                onClick={() => setRightTab('soundboard')}
+              >
+                Soundboard
+              </button>
+            )}
           </div>
           <div style={styles.panelContent}>
             {rightTab === 'chat' && (
@@ -230,6 +243,9 @@ export default function CampaignView({ session }) {
             )}
             {rightTab === 'reference' && (
               <Reference system={campaign.system} role={role} />
+            )}
+            {rightTab === 'soundboard' && role === 'dm' && (
+              <Soundboard campaignId={id} />
             )}
           </div>
         </div>

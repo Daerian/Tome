@@ -13,6 +13,7 @@ from routers import (
     reference,
     session_prep,
     session_prep_plan,
+    soundboard,
 )
 
 # Load environment variables from backend/.env when running locally.
@@ -22,8 +23,8 @@ load_dotenv()
 app = FastAPI()
 
 # Build the list of allowed CORS origins from environment variables.
-# FRONTEND_URL_LOCAL — local dev URL (set in .env, e.g. http://localhost:5173)
-# FRONTEND_URL       — production URL (set in Render dashboard, e.g. https://tome.vercel.app)
+# FRONTEND_URL_LOCAL: local dev URL (set in .env, e.g. http://localhost:5173)
+# FRONTEND_URL:       production URL (set in Render dashboard, e.g. https://tome.vercel.app)
 origins = []
 if os.getenv("FRONTEND_URL_LOCAL"):
     origins.append(os.getenv("FRONTEND_URL_LOCAL"))
@@ -49,6 +50,7 @@ app.include_router(adventure.router, prefix="/api")
 app.include_router(extract_beats.router, prefix="/api")
 app.include_router(items.router, prefix="/api")
 app.include_router(session_prep_plan.router, prefix="/api")
+app.include_router(soundboard.router, prefix="/api")
 
 
 @app.get("/health")

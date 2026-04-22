@@ -25,6 +25,7 @@ from supabase_client import supabase as sb
 from tools.campaign_tools import ALL_CAMPAIGN_TOOLS
 from tools.deps import CampaignDeps
 from tools.fivetools_tools import ADVENTURE_MAP
+from tools.soundboard_tools import ALL_SOUNDBOARD_TOOLS
 
 # Load .env before reading any env vars so the API key is available locally.
 # In production (Render) the key is already in the environment — load_dotenv
@@ -68,6 +69,46 @@ campaign_agent = Agent(
     system_prompt=SYSTEM_PROMPT_BASE,
     deps_type=CampaignDeps,
     tools=ALL_CAMPAIGN_TOOLS,
+)
+
+
+# ---------------------------------------------------------------------------
+# Soundboard agent — structured track suggestions for a given session scene
+# ---------------------------------------------------------------------------
+
+
+class TrackSuggestion(BaseModel):
+    """A single recommended ambient track with a fit rationale."""
+
+    id: str  # e.g. "tabletop_audio:42"
+    title: str
+    reason: str  # one sentence explaining why this track fits the scene
+
+
+class SoundboardSuggestResult(BaseModel):
+    """Structured output from the soundboard agent."""
+
+    suggestions: list[TrackSuggestion]
+
+
+soundboard_agent = Agent(
+    model,
+    result_type=SoundboardSuggestResult,
+    system_prompt=(
+        "You are a D&D scene music curator for the app Tome. "
+        "Given a campaign session's context, select exactly 3 ambient music tracks "
+        "from the library that best fit the mood, tone, and setting.\n\n"
+        "Steps:\n"
+        "1. Call get_scene_context with the provided session_id to understand the scene.\n"
+        "2. Call search_soundboard_library one or more times with relevant queries "
+        "(e.g. the location type, dominant tone, active threat, narrative theme).\n"
+        "3. Return exactly 3 tracks ranked by fit, with a one-sentence reason each.\n\n"
+        "Focus on: location environment (dungeon, tavern, forest, city, sea), "
+        "emotional tone (tense, mysterious, peaceful, celebratory, ominous), "
+        "active threats or missions, and the overall narrative arc."
+    ),
+    deps_type=CampaignDeps,
+    tools=ALL_SOUNDBOARD_TOOLS,
 )
 
 
