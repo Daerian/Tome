@@ -244,7 +244,9 @@ export default function CampaignView({ session }) {
             {rightTab === 'reference' && (
               <Reference system={campaign.system} role={role} />
             )}
-            {rightTab === 'soundboard' && role === 'dm' && <Soundboard />}
+            {rightTab === 'soundboard' && role === 'dm' && (
+              <Soundboard campaignId={id} />
+            )}
           </div>
         </div>
       </div>

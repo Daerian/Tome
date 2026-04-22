@@ -21,8 +21,13 @@ from urllib.parse import unquote, urlencode, urlparse
 import httpx
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
 
 router = APIRouter()
+
+# Lazy imports to avoid circular dependency at module load time.
+# generate.py defines the soundboard_agent and imports soundboard_tools;
+# soundboard.py imports the agent only inside the suggest endpoint handler.
 
 TABLETOP_AUDIO_CATALOG_URL = "https://tabletopaudio.com/tta_data"
 ALLOWED_AUDIO_HOST = "sounds.tabletopaudio.com"
@@ -36,6 +41,10 @@ _catalog_cache: dict[str, object] = {
     "fetched_at": 0.0,
     "tracks": [],
 }
+
+# Tracks the timestamp of the last successful catalog-to-DB sync so we only
+# write to Supabase once per cache generation (24h TTL).
+_db_sync_at: float = 0.0
 
 
 # ---------------------------------------------------------------------------
@@ -238,3 +247,100 @@ async def proxy_audio(url: str, request: Request):
         headers=out_headers,
         media_type=content_type,
     )
+
+
+# ---------------------------------------------------------------------------
+# Catalog DB sync (Phase 2)
+# ---------------------------------------------------------------------------
+
+
+async def _sync_catalog_to_db(sb) -> None:
+    """Upsert the in-memory catalog into the soundboard_tracks Supabase table.
+
+    Runs at most once per cache generation. Uses delete-then-insert because
+    partial unique indexes on nullable columns cannot be referenced by the
+    Supabase upsert on_conflict parameter. The service-role client bypasses
+    all RLS so no special policies are needed for global tracks.
+    """
+    global _db_sync_at
+
+    tracks = _catalog_cache.get("tracks") or []
+    if not tracks:
+        return
+
+    fetched_at = float(_catalog_cache.get("fetched_at") or 0.0)
+    if _db_sync_at >= fetched_at:
+        return  # already synced this cache generation
+
+    rows = [
+        {
+            "source": t["source"],
+            "external_id": t["external_id"],
+            "title": t["title"],
+            "url": t["url"],
+            "track_type": t.get("track_type", ""),
+            "tags": t.get("tags") or [],
+            "genres": t.get("genres") or [],
+            "flavor": t.get("flavor", ""),
+            "image_url": t.get("image_url", ""),
+            "campaign_id": None,
+        }
+        for t in tracks
+    ]
+
+    try:
+        # Replace all existing global Tabletop Audio tracks atomically.
+        sb.table("soundboard_tracks").delete().eq("source", "tabletop_audio").is_(
+            "campaign_id", "null"
+        ).execute()
+
+        batch_size = 100
+        for i in range(0, len(rows), batch_size):
+            sb.table("soundboard_tracks").insert(rows[i : i + batch_size]).execute()
+
+        _db_sync_at = fetched_at
+    except Exception:
+        pass  # non-fatal — the in-memory catalog still works if DB is unavailable
+
+
+# ---------------------------------------------------------------------------
+# Suggest endpoint (Phase 2)
+# ---------------------------------------------------------------------------
+
+
+class SuggestRequest(BaseModel):
+    campaign_id: str
+    session_id: str
+    user_id: str | None = None
+    scene_hint: str | None = None
+
+
+@router.post("/soundboard/suggest")
+async def suggest_tracks(body: SuggestRequest):
+    """Return 3 scene-aware track suggestions for the given session.
+
+    Ensures the Tabletop Audio catalog is synced to the database, then runs
+    the soundboard agent which uses the session context and the DB catalog to
+    rank tracks by narrative fit.
+    """
+    from routers.generate import soundboard_agent
+    from supabase_client import supabase as sb
+    from tools.deps import CampaignDeps
+
+    # Ensure catalog is in the database before the agent searches it.
+    await _fetch_catalog()
+    await _sync_catalog_to_db(sb)
+
+    deps = CampaignDeps(
+        supabase=sb,
+        campaign_id=body.campaign_id,
+        user_id=body.user_id or "",
+        role="dm",
+    )
+
+    prompt = f"session_id: {body.session_id}\n\nSuggest 3 ambient tracks for this session."
+    if body.scene_hint:
+        prompt += f"\nAdditional context from the DM: {body.scene_hint}"
+
+    result = await soundboard_agent.run(prompt, deps=deps)
+    return result.output.model_dump()

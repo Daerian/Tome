@@ -3,22 +3,34 @@
  *
  * Phase 1: fetches the normalized catalog from /api/soundboard/catalog,
  * offers search + tag/type filters, and lets the DM start a track via
- * the shared SoundboardProvider. Later phases add scene-aware LLM
- * suggestions, Freesound SFX, DM uploads, and ElevenLabs generation.
+ * the shared SoundboardProvider.
+ *
+ * Phase 2: adds a scene-aware "Suggest" section. The DM picks a session,
+ * optionally adds a scene hint, and the LLM agent returns 3 ranked picks
+ * from the catalog with a one-line fit rationale each.
  */
 
 import { useEffect, useMemo, useState } from 'react';
+import { supabase } from '../lib/supabase';
 import { useSoundboard } from '../context/useSoundboard';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
-export default function Soundboard() {
+export default function Soundboard({ campaignId }) {
   const { currentTrack, playTrack } = useSoundboard();
   const [catalog, setCatalog] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [query, setQuery] = useState('');
   const [activeTag, setActiveTag] = useState(null);
+
+  // Suggest section state
+  const [sessions, setSessions] = useState([]);
+  const [selectedSession, setSelectedSession] = useState('');
+  const [sceneHint, setSceneHint] = useState('');
+  const [suggesting, setSuggesting] = useState(false);
+  const [suggestions, setSuggestions] = useState(null);
+  const [suggestError, setSuggestError] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -47,6 +59,51 @@ export default function Soundboard() {
       cancelled = true;
     };
   }, []);
+
+  // Fetch sessions for the suggest picker when a campaignId is available.
+  useEffect(() => {
+    if (!campaignId) return;
+    supabase
+      .from('sessions')
+      .select('id, session_number, title, status')
+      .eq('campaign_id', campaignId)
+      .order('session_number', { ascending: false })
+      .then(({ data }) => {
+        if (data) setSessions(data);
+      });
+  }, [campaignId]);
+
+  async function handleSuggest() {
+    if (!selectedSession || !campaignId) return;
+    setSuggesting(true);
+    setSuggestError(null);
+    setSuggestions(null);
+    try {
+      const res = await fetch(`${API_URL}/api/soundboard/suggest`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          campaign_id: campaignId,
+          session_id: selectedSession,
+          scene_hint: sceneHint || undefined,
+        }),
+      });
+      if (!res.ok) throw new Error(`Suggestion request failed: ${res.status}`);
+      const data = await res.json();
+      // Enrich each suggestion with the full track data from the catalog
+      // so the DM can play it directly from the results panel.
+      const trackMap = new Map((catalog?.tracks || []).map((t) => [t.id, t]));
+      const enriched = (data.suggestions || []).map((s) => ({
+        ...s,
+        track: trackMap.get(s.id) || null,
+      }));
+      setSuggestions(enriched);
+    } catch (err) {
+      setSuggestError(err.message || 'Suggestion failed.');
+    } finally {
+      setSuggesting(false);
+    }
+  }
 
   const topTags = useMemo(() => {
     if (!catalog?.tracks) return [];
@@ -80,6 +137,81 @@ export default function Soundboard() {
 
   return (
     <div style={styles.wrap}>
+      {/* Phase 2: Scene-aware suggestions */}
+      {campaignId && (
+        <div style={styles.suggestSection}>
+          <div style={styles.suggestRow}>
+            <select
+              value={selectedSession}
+              onChange={(e) => {
+                setSelectedSession(e.target.value);
+                setSuggestions(null);
+              }}
+              style={styles.sessionSelect}
+              aria-label="Select session"
+            >
+              <option value="">Select a session…</option>
+              {sessions.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.session_number ? `#${s.session_number} ` : ''}
+                  {s.title || 'Untitled'}
+                  {s.status === 'in_progress' ? ' (in progress)' : ''}
+                </option>
+              ))}
+            </select>
+            <input
+              type="text"
+              placeholder="Scene hint (optional)"
+              value={sceneHint}
+              onChange={(e) => setSceneHint(e.target.value)}
+              style={styles.hintInput}
+              aria-label="Scene hint"
+            />
+            <button
+              style={
+                selectedSession && !suggesting
+                  ? styles.suggestBtn
+                  : styles.suggestBtnDisabled
+              }
+              onClick={handleSuggest}
+              disabled={!selectedSession || suggesting}
+            >
+              {suggesting ? 'Thinking…' : 'Suggest'}
+            </button>
+          </div>
+
+          {suggestError && <p style={styles.error}>{suggestError}</p>}
+
+          {suggestions && suggestions.length > 0 && (
+            <div style={styles.suggestResults}>
+              {suggestions.map((s, i) => {
+                const track = s.track;
+                const isActive = currentTrack?.id === s.id;
+                return (
+                  <div
+                    key={s.id}
+                    style={isActive ? styles.suggestCardActive : styles.suggestCard}
+                  >
+                    <div style={styles.suggestRank}>#{i + 1}</div>
+                    <div style={styles.suggestInfo}>
+                      <div style={styles.cardTitle}>{s.title}</div>
+                      <div style={styles.suggestReason}>{s.reason}</div>
+                    </div>
+                    <button
+                      style={styles.playBtn}
+                      onClick={() => track && playTrack(track)}
+                      disabled={!track?.url}
+                    >
+                      {isActive ? 'Playing' : 'Play'}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
       <div style={styles.toolbar}>
         <input
           type="text"
@@ -306,5 +438,101 @@ const styles = {
     color: 'var(--accent-deep)',
     textDecoration: 'none',
     borderBottom: '1px solid var(--accent-rule)',
+  },
+  suggestSection: {
+    padding: '0.75rem 1rem',
+    borderBottom: '1px solid var(--border-medium)',
+    backgroundColor: 'var(--sidebar-bg)',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.5rem',
+  },
+  suggestRow: {
+    display: 'flex',
+    gap: '0.4rem',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+  },
+  sessionSelect: {
+    flex: '1 1 160px',
+    padding: '0.4rem 0.5rem',
+    border: '1px solid var(--border-medium)',
+    backgroundColor: 'var(--page-bg)',
+    color: 'var(--ink-dark)',
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.8rem',
+  },
+  hintInput: {
+    flex: '2 1 180px',
+    padding: '0.4rem 0.6rem',
+    border: '1px solid var(--border-medium)',
+    backgroundColor: 'var(--page-bg)',
+    color: 'var(--ink-dark)',
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.8rem',
+  },
+  suggestBtn: {
+    padding: '0.4rem 0.8rem',
+    background: 'var(--accent-rule)',
+    border: '1px solid var(--accent-deep)',
+    color: 'var(--page-bg)',
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.75rem',
+    fontVariant: 'small-caps',
+    letterSpacing: '0.06em',
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
+  },
+  suggestBtnDisabled: {
+    padding: '0.4rem 0.8rem',
+    background: 'none',
+    border: '1px solid var(--border-medium)',
+    color: 'var(--ink-faint)',
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.75rem',
+    fontVariant: 'small-caps',
+    letterSpacing: '0.06em',
+    cursor: 'not-allowed',
+    whiteSpace: 'nowrap',
+  },
+  suggestResults: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.35rem',
+  },
+  suggestCard: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: '0.5rem',
+    border: '1px solid var(--border-medium)',
+    backgroundColor: 'var(--page-bg)',
+    padding: '0.5rem 0.6rem',
+  },
+  suggestCardActive: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: '0.5rem',
+    border: '2px solid var(--accent-deep)',
+    backgroundColor: 'var(--hover-bg)',
+    padding: '0.45rem 0.55rem',
+  },
+  suggestRank: {
+    fontSize: '0.7rem',
+    color: 'var(--ink-faint)',
+    fontFamily: 'var(--font-heading)',
+    fontVariant: 'small-caps',
+    minWidth: '1.4rem',
+    paddingTop: '0.05rem',
+  },
+  suggestInfo: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.15rem',
+  },
+  suggestReason: {
+    fontSize: '0.72rem',
+    fontStyle: 'italic',
+    color: 'var(--ink-light)',
   },
 };
