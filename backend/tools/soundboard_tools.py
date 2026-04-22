@@ -7,6 +7,9 @@ current session, then calls search_soundboard_library one or more times
 with relevant queries before returning ranked suggestions.
 """
 
+import os
+
+import httpx
 from pydantic_ai import RunContext
 
 from tools.deps import CampaignDeps
@@ -158,4 +161,56 @@ def search_soundboard_library(
     return tracks[:limit]
 
 
-ALL_SOUNDBOARD_TOOLS = [get_scene_context, search_soundboard_library]
+async def search_sfx(
+    ctx: RunContext[CampaignDeps],
+    query: str,
+    limit: int = 5,
+) -> list[dict]:
+    """Search Freesound for one-shot SFX clips matching the query.
+
+    Use this for specific, triggered sound effects such as 'door slam',
+    'thunder crash', 'sword clash', or 'crowd cheer'. Returns an empty list
+    if FREESOUND_API_KEY is not configured in the backend environment.
+    Call this in addition to search_soundboard_library when the scene calls
+    for a punctual sound effect alongside ambient music.
+    """
+    api_key = os.getenv("FREESOUND_API_KEY")
+    if not api_key:
+        return []
+
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            res = await client.get(
+                "https://freesound.org/apiv2/search/text/",
+                params={
+                    "query": query,
+                    "fields": "id,name,tags,previews,duration,username",
+                    "page_size": limit,
+                    "token": api_key,
+                },
+            )
+            res.raise_for_status()
+            data = res.json()
+    except httpx.HTTPError:
+        return []
+
+    results = []
+    for sound in data.get("results") or []:
+        previews = sound.get("previews") or {}
+        url = previews.get("preview-hq-mp3") or previews.get("preview-lq-mp3") or ""
+        if not url:
+            continue
+        results.append(
+            {
+                "id": f"freesound:{sound['id']}",
+                "title": sound.get("name") or "Untitled",
+                "url": url,
+                "tags": (sound.get("tags") or [])[:8],
+                "duration": sound.get("duration"),
+                "attribution": sound.get("username") or "",
+            }
+        )
+    return results[:limit]
+
+
+ALL_SOUNDBOARD_TOOLS = [get_scene_context, search_soundboard_library, search_sfx]

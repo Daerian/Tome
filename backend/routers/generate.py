@@ -21,8 +21,6 @@ from pydantic_ai.messages import (
 from pydantic_ai.models.anthropic import AnthropicModel
 from pydantic_ai.providers.anthropic import AnthropicProvider
 
-from pydantic import BaseModel as PydanticBaseModel
-
 from supabase_client import supabase as sb
 from tools.campaign_tools import ALL_CAMPAIGN_TOOLS
 from tools.deps import CampaignDeps
@@ -79,15 +77,15 @@ campaign_agent = Agent(
 # ---------------------------------------------------------------------------
 
 
-class TrackSuggestion(PydanticBaseModel):
+class TrackSuggestion(BaseModel):
     """A single recommended ambient track with a fit rationale."""
 
-    id: str    # e.g. "tabletop_audio:42"
+    id: str  # e.g. "tabletop_audio:42"
     title: str
     reason: str  # one sentence explaining why this track fits the scene
 
 
-class SoundboardSuggestResult(PydanticBaseModel):
+class SoundboardSuggestResult(BaseModel):
     """Structured output from the soundboard agent."""
 
     suggestions: list[TrackSuggestion]

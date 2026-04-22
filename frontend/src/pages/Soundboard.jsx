@@ -1,13 +1,13 @@
 /**
- * Soundboard — DM-only catalog browser for Tabletop Audio tracks.
+ * Soundboard — DM-only audio browser for Tabletop Audio tracks and Freesound SFX.
  *
- * Phase 1: fetches the normalized catalog from /api/soundboard/catalog,
- * offers search + tag/type filters, and lets the DM start a track via
- * the shared SoundboardProvider.
+ * Phase 1: catalog browse + play (Tabletop Audio ambient loops).
+ * Phase 2: LLM scene-aware "Suggest" section.
+ * Phase 3: Freesound SFX panel — search for one-shot clips that layer on top
+ *           of ambient music (music auto-ducks while SFX plays).
  *
- * Phase 2: adds a scene-aware "Suggest" section. The DM picks a session,
- * optionally adds a scene hint, and the LLM agent returns 3 ranked picks
- * from the catalog with a one-line fit rationale each.
+ * Internal tabs: "Ambient" shows the Phase 1+2 catalog; "SFX" shows the
+ * Freesound search panel.
  */
 
 import { useEffect, useMemo, useState } from 'react';
@@ -17,20 +17,41 @@ import { useSoundboard } from '../context/useSoundboard';
 const API_URL = import.meta.env.VITE_API_URL;
 
 export default function Soundboard({ campaignId }) {
-  const { currentTrack, playTrack } = useSoundboard();
+  const { currentTrack, playTrack, sfxTrack, playSfx } = useSoundboard();
+
+  // Internal panel: 'ambient' or 'sfx'
+  const [panel, setPanel] = useState('ambient');
+
+  // ---------------------------------------------------------------------------
+  // Ambient catalog state
+  // ---------------------------------------------------------------------------
   const [catalog, setCatalog] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [query, setQuery] = useState('');
   const [activeTag, setActiveTag] = useState(null);
 
-  // Suggest section state
+  // ---------------------------------------------------------------------------
+  // Suggest section state (Phase 2)
+  // ---------------------------------------------------------------------------
   const [sessions, setSessions] = useState([]);
   const [selectedSession, setSelectedSession] = useState('');
   const [sceneHint, setSceneHint] = useState('');
   const [suggesting, setSuggesting] = useState(false);
   const [suggestions, setSuggestions] = useState(null);
   const [suggestError, setSuggestError] = useState(null);
+
+  // ---------------------------------------------------------------------------
+  // SFX search state (Phase 3)
+  // ---------------------------------------------------------------------------
+  const [sfxQuery, setSfxQuery] = useState('');
+  const [sfxResults, setSfxResults] = useState(null);
+  const [sfxLoading, setSfxLoading] = useState(false);
+  const [sfxError, setSfxError] = useState(null);
+
+  // ---------------------------------------------------------------------------
+  // Effects
+  // ---------------------------------------------------------------------------
 
   useEffect(() => {
     let cancelled = false;
@@ -73,6 +94,10 @@ export default function Soundboard({ campaignId }) {
       });
   }, [campaignId]);
 
+  // ---------------------------------------------------------------------------
+  // Handlers
+  // ---------------------------------------------------------------------------
+
   async function handleSuggest() {
     if (!selectedSession || !campaignId) return;
     setSuggesting(true);
@@ -90,8 +115,6 @@ export default function Soundboard({ campaignId }) {
       });
       if (!res.ok) throw new Error(`Suggestion request failed: ${res.status}`);
       const data = await res.json();
-      // Enrich each suggestion with the full track data from the catalog
-      // so the DM can play it directly from the results panel.
       const trackMap = new Map((catalog?.tracks || []).map((t) => [t.id, t]));
       const enriched = (data.suggestions || []).map((s) => ({
         ...s,
@@ -104,6 +127,34 @@ export default function Soundboard({ campaignId }) {
       setSuggesting(false);
     }
   }
+
+  async function handleSfxSearch(e) {
+    e.preventDefault();
+    const q = sfxQuery.trim();
+    if (!q) return;
+    setSfxLoading(true);
+    setSfxError(null);
+    setSfxResults(null);
+    try {
+      const res = await fetch(
+        `${API_URL}/api/soundboard/sfx/search?q=${encodeURIComponent(q)}`,
+      );
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.detail || `Search failed: ${res.status}`);
+      }
+      const data = await res.json();
+      setSfxResults(data.results || []);
+    } catch (err) {
+      setSfxError(err.message || 'SFX search failed.');
+    } finally {
+      setSfxLoading(false);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Derived
+  // ---------------------------------------------------------------------------
 
   const topTags = useMemo(() => {
     if (!catalog?.tracks) return [];
@@ -135,167 +186,301 @@ export default function Soundboard({ campaignId }) {
     });
   }, [catalog, query, activeTag]);
 
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
+
   return (
     <div style={styles.wrap}>
-      {/* Phase 2: Scene-aware suggestions */}
-      {campaignId && (
-        <div style={styles.suggestSection}>
-          <div style={styles.suggestRow}>
-            <select
-              value={selectedSession}
-              onChange={(e) => {
-                setSelectedSession(e.target.value);
-                setSuggestions(null);
-              }}
-              style={styles.sessionSelect}
-              aria-label="Select session"
-            >
-              <option value="">Select a session…</option>
-              {sessions.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.session_number ? `#${s.session_number} ` : ''}
-                  {s.title || 'Untitled'}
-                  {s.status === 'in_progress' ? ' (in progress)' : ''}
-                </option>
-              ))}
-            </select>
-            <input
-              type="text"
-              placeholder="Scene hint (optional)"
-              value={sceneHint}
-              onChange={(e) => setSceneHint(e.target.value)}
-              style={styles.hintInput}
-              aria-label="Scene hint"
-            />
-            <button
-              style={
-                selectedSession && !suggesting
-                  ? styles.suggestBtn
-                  : styles.suggestBtnDisabled
-              }
-              onClick={handleSuggest}
-              disabled={!selectedSession || suggesting}
-            >
-              {suggesting ? 'Thinking…' : 'Suggest'}
-            </button>
-          </div>
+      {/* Internal panel tab bar */}
+      <div style={styles.panelTabBar}>
+        <button
+          style={panel === 'ambient' ? styles.panelTabActive : styles.panelTab}
+          onClick={() => setPanel('ambient')}
+        >
+          Ambient
+        </button>
+        <button
+          style={panel === 'sfx' ? styles.panelTabActive : styles.panelTab}
+          onClick={() => setPanel('sfx')}
+        >
+          SFX
+          {sfxTrack && <span style={styles.sfxBadge}>•</span>}
+        </button>
+      </div>
 
-          {suggestError && <p style={styles.error}>{suggestError}</p>}
+      {/* ------------------------------------------------------------------ */}
+      {/* AMBIENT PANEL                                                       */}
+      {/* ------------------------------------------------------------------ */}
+      {panel === 'ambient' && (
+        <>
+          {/* Phase 2: Scene-aware suggestions */}
+          {campaignId && (
+            <div style={styles.suggestSection}>
+              <div style={styles.suggestRow}>
+                <select
+                  value={selectedSession}
+                  onChange={(e) => {
+                    setSelectedSession(e.target.value);
+                    setSuggestions(null);
+                  }}
+                  style={styles.sessionSelect}
+                  aria-label="Select session"
+                >
+                  <option value="">Select a session…</option>
+                  {sessions.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.session_number ? `#${s.session_number} ` : ''}
+                      {s.title || 'Untitled'}
+                      {s.status === 'in_progress' ? ' (in progress)' : ''}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="text"
+                  placeholder="Scene hint (optional)"
+                  value={sceneHint}
+                  onChange={(e) => setSceneHint(e.target.value)}
+                  style={styles.hintInput}
+                  aria-label="Scene hint"
+                />
+                <button
+                  style={
+                    selectedSession && !suggesting
+                      ? styles.suggestBtn
+                      : styles.suggestBtnDisabled
+                  }
+                  onClick={handleSuggest}
+                  disabled={!selectedSession || suggesting}
+                >
+                  {suggesting ? 'Thinking…' : 'Suggest'}
+                </button>
+              </div>
 
-          {suggestions && suggestions.length > 0 && (
-            <div style={styles.suggestResults}>
-              {suggestions.map((s, i) => {
-                const track = s.track;
-                const isActive = currentTrack?.id === s.id;
-                return (
-                  <div
-                    key={s.id}
-                    style={isActive ? styles.suggestCardActive : styles.suggestCard}
-                  >
-                    <div style={styles.suggestRank}>#{i + 1}</div>
-                    <div style={styles.suggestInfo}>
-                      <div style={styles.cardTitle}>{s.title}</div>
-                      <div style={styles.suggestReason}>{s.reason}</div>
-                    </div>
-                    <button
-                      style={styles.playBtn}
-                      onClick={() => track && playTrack(track)}
-                      disabled={!track?.url}
-                    >
-                      {isActive ? 'Playing' : 'Play'}
-                    </button>
-                  </div>
-                );
-              })}
+              {suggestError && <p style={styles.error}>{suggestError}</p>}
+
+              {suggestions && suggestions.length > 0 && (
+                <div style={styles.suggestResults}>
+                  {suggestions.map((s, i) => {
+                    const track = s.track;
+                    const isActive = currentTrack?.id === s.id;
+                    return (
+                      <div
+                        key={s.id}
+                        style={
+                          isActive
+                            ? styles.suggestCardActive
+                            : styles.suggestCard
+                        }
+                      >
+                        <div style={styles.suggestRank}>#{i + 1}</div>
+                        <div style={styles.suggestInfo}>
+                          <div style={styles.cardTitle}>{s.title}</div>
+                          <div style={styles.suggestReason}>{s.reason}</div>
+                        </div>
+                        <button
+                          style={styles.playBtn}
+                          onClick={() => track && playTrack(track)}
+                          disabled={!track?.url}
+                        >
+                          {isActive ? 'Playing' : 'Play'}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
-        </div>
+
+          {/* Search + genre filter */}
+          <div style={styles.toolbar}>
+            <input
+              type="text"
+              placeholder="Search tracks by title, tag, or flavor…"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              style={styles.search}
+            />
+            <div style={styles.tagRow}>
+              <button
+                style={activeTag === null ? styles.tagActive : styles.tag}
+                onClick={() => setActiveTag(null)}
+              >
+                All
+              </button>
+              {topTags.map((tag) => (
+                <button
+                  key={tag}
+                  style={activeTag === tag ? styles.tagActive : styles.tag}
+                  onClick={() => setActiveTag(activeTag === tag ? null : tag)}
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Track grid */}
+          <div style={styles.body}>
+            {loading && <p style={styles.muted}>Loading catalog…</p>}
+            {error && <p style={styles.error}>{error}</p>}
+            {!loading && !error && catalog && (
+              <>
+                <p style={styles.muted}>
+                  {filtered.length} of {catalog.count} tracks
+                </p>
+                <div style={styles.grid}>
+                  {filtered.map((track) => {
+                    const isActive = currentTrack?.id === track.id;
+                    return (
+                      <div
+                        key={track.id}
+                        style={isActive ? styles.cardActive : styles.card}
+                      >
+                        <div style={styles.cardTitle}>{track.title}</div>
+                        {track.flavor && (
+                          <div style={styles.cardFlavor}>{track.flavor}</div>
+                        )}
+                        {track.genres?.length > 0 && (
+                          <div style={styles.cardTags}>
+                            {track.genres.slice(0, 4).map((g) => (
+                              <span key={g} style={styles.cardTag}>
+                                {g}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        <button
+                          style={styles.playBtn}
+                          onClick={() => playTrack(track)}
+                          disabled={!track.url}
+                        >
+                          {isActive ? 'Playing' : 'Play'}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Attribution footer */}
+          {catalog?.attribution && (
+            <div style={styles.footer}>
+              Ambiences by{' '}
+              <a
+                href={catalog.attribution.url}
+                target="_blank"
+                rel="noreferrer"
+                style={styles.footerLink}
+              >
+                {catalog.attribution.name}
+              </a>
+              {catalog.attribution.note
+                ? ` — ${catalog.attribution.note}`
+                : null}
+            </div>
+          )}
+        </>
       )}
 
-      <div style={styles.toolbar}>
-        <input
-          type="text"
-          placeholder="Search tracks by title, tag, or flavor…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          style={styles.search}
-        />
-        <div style={styles.tagRow}>
-          <button
-            style={activeTag === null ? styles.tagActive : styles.tag}
-            onClick={() => setActiveTag(null)}
-          >
-            All
-          </button>
-          {topTags.map((tag) => (
-            <button
-              key={tag}
-              style={activeTag === tag ? styles.tagActive : styles.tag}
-              onClick={() => setActiveTag(activeTag === tag ? null : tag)}
-            >
-              {tag}
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* ------------------------------------------------------------------ */}
+      {/* SFX PANEL (Phase 3)                                                 */}
+      {/* ------------------------------------------------------------------ */}
+      {panel === 'sfx' && (
+        <>
+          <div style={styles.toolbar}>
+            <form onSubmit={handleSfxSearch} style={styles.sfxSearchRow}>
+              <input
+                type="text"
+                placeholder="Search sounds (e.g. thunder, door slam, crowd)…"
+                value={sfxQuery}
+                onChange={(e) => setSfxQuery(e.target.value)}
+                style={styles.search}
+                aria-label="Search SFX"
+              />
+              <button
+                type="submit"
+                style={
+                  sfxQuery.trim() && !sfxLoading
+                    ? styles.sfxGoBtn
+                    : styles.sfxGoBtnDisabled
+                }
+                disabled={!sfxQuery.trim() || sfxLoading}
+              >
+                {sfxLoading ? '…' : 'Search'}
+              </button>
+            </form>
+          </div>
 
-      <div style={styles.body}>
-        {loading && <p style={styles.muted}>Loading catalog…</p>}
-        {error && <p style={styles.error}>{error}</p>}
-        {!loading && !error && catalog && (
-          <>
-            <p style={styles.muted}>
-              {filtered.length} of {catalog.count} tracks
-            </p>
-            <div style={styles.grid}>
-              {filtered.map((track) => {
-                const isActive = currentTrack?.id === track.id;
-                return (
-                  <div
-                    key={track.id}
-                    style={isActive ? styles.cardActive : styles.card}
-                  >
-                    <div style={styles.cardTitle}>{track.title}</div>
-                    {track.flavor && (
-                      <div style={styles.cardFlavor}>{track.flavor}</div>
-                    )}
-                    {track.genres?.length > 0 && (
-                      <div style={styles.cardTags}>
-                        {track.genres.slice(0, 4).map((g) => (
-                          <span key={g} style={styles.cardTag}>
-                            {g}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                    <button
-                      style={styles.playBtn}
-                      onClick={() => playTrack(track)}
-                      disabled={!track.url}
+          <div style={styles.body}>
+            {sfxLoading && <p style={styles.muted}>Searching…</p>}
+            {sfxError && <p style={styles.error}>{sfxError}</p>}
+            {sfxResults && sfxResults.length === 0 && (
+              <p style={styles.muted}>No results found.</p>
+            )}
+            {sfxResults && sfxResults.length > 0 && (
+              <div style={styles.sfxGrid}>
+                {sfxResults.map((clip) => {
+                  const isActive = sfxTrack?.id === clip.id;
+                  const dur = clip.duration
+                    ? `${Math.round(clip.duration)}s`
+                    : null;
+                  return (
+                    <div
+                      key={clip.id}
+                      style={isActive ? styles.sfxCardActive : styles.sfxCard}
                     >
-                      {isActive ? 'Playing' : 'Play'}
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          </>
-        )}
-      </div>
+                      <div style={styles.sfxCardTop}>
+                        <div style={styles.cardTitle}>{clip.title}</div>
+                        {dur && <span style={styles.sfxDur}>{dur}</span>}
+                      </div>
+                      {clip.tags?.length > 0 && (
+                        <div style={styles.cardTags}>
+                          {clip.tags.slice(0, 5).map((t) => (
+                            <span key={t} style={styles.cardTag}>
+                              {t}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      <div style={styles.sfxCardFooter}>
+                        {clip.attribution && (
+                          <span style={styles.sfxAttrib}>
+                            by {clip.attribution}
+                          </span>
+                        )}
+                        <button
+                          style={styles.playBtn}
+                          onClick={() => playSfx(clip)}
+                          disabled={!clip.url}
+                        >
+                          {isActive ? 'Playing' : 'Play'}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
 
-      {catalog?.attribution && (
-        <div style={styles.footer}>
-          Ambiences by{' '}
-          <a
-            href={catalog.attribution.url}
-            target="_blank"
-            rel="noreferrer"
-            style={styles.footerLink}
-          >
-            {catalog.attribution.name}
-          </a>
-          {catalog.attribution.note ? ` — ${catalog.attribution.note}` : null}
-        </div>
+          <div style={styles.footer}>
+            Sounds from{' '}
+            <a
+              href="https://freesound.org"
+              target="_blank"
+              rel="noreferrer"
+              style={styles.footerLink}
+            >
+              Freesound
+            </a>{' '}
+            under Creative Commons licenses. Attribution required for CC-BY
+            clips.
+          </div>
+        </>
       )}
     </div>
   );
@@ -308,6 +493,41 @@ const styles = {
     height: '100%',
     fontFamily: 'var(--font-body)',
   },
+  panelTabBar: {
+    display: 'flex',
+    borderBottom: '1px solid var(--border-medium)',
+    backgroundColor: 'var(--sidebar-bg)',
+  },
+  panelTab: {
+    padding: '0.45rem 0.9rem',
+    background: 'none',
+    border: 'none',
+    borderBottom: '2px solid transparent',
+    color: 'var(--ink-medium)',
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.8rem',
+    fontVariant: 'small-caps',
+    letterSpacing: '0.05em',
+    cursor: 'pointer',
+  },
+  panelTabActive: {
+    padding: '0.45rem 0.9rem',
+    background: 'none',
+    border: 'none',
+    borderBottom: '2px solid var(--accent-deep)',
+    color: 'var(--ink-dark)',
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.8rem',
+    fontVariant: 'small-caps',
+    letterSpacing: '0.05em',
+    cursor: 'pointer',
+  },
+  sfxBadge: {
+    marginLeft: '0.25rem',
+    color: 'var(--accent-deep)',
+    fontSize: '1rem',
+    lineHeight: 1,
+  },
   toolbar: {
     padding: '0.75rem 1rem',
     borderBottom: '1px solid var(--border-light)',
@@ -316,13 +536,42 @@ const styles = {
     flexDirection: 'column',
     gap: '0.5rem',
   },
+  sfxSearchRow: {
+    display: 'flex',
+    gap: '0.4rem',
+  },
   search: {
+    flex: 1,
     padding: '0.4rem 0.6rem',
     border: '1px solid var(--border-medium)',
     backgroundColor: 'var(--page-bg)',
     color: 'var(--ink-dark)',
     fontFamily: 'var(--font-body)',
     fontSize: '0.85rem',
+  },
+  sfxGoBtn: {
+    padding: '0.4rem 0.8rem',
+    background: 'var(--accent-rule)',
+    border: '1px solid var(--accent-deep)',
+    color: 'var(--page-bg)',
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.75rem',
+    fontVariant: 'small-caps',
+    letterSpacing: '0.06em',
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
+  },
+  sfxGoBtnDisabled: {
+    padding: '0.4rem 0.8rem',
+    background: 'none',
+    border: '1px solid var(--border-medium)',
+    color: 'var(--ink-faint)',
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.75rem',
+    fontVariant: 'small-caps',
+    letterSpacing: '0.06em',
+    cursor: 'not-allowed',
+    whiteSpace: 'nowrap',
   },
   tagRow: {
     display: 'flex',
@@ -439,6 +688,7 @@ const styles = {
     textDecoration: 'none',
     borderBottom: '1px solid var(--accent-rule)',
   },
+  // Phase 2 — suggest section
   suggestSection: {
     padding: '0.75rem 1rem',
     borderBottom: '1px solid var(--border-medium)',
@@ -534,5 +784,50 @@ const styles = {
     fontSize: '0.72rem',
     fontStyle: 'italic',
     color: 'var(--ink-light)',
+  },
+  // Phase 3 — SFX panel
+  sfxGrid: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.45rem',
+  },
+  sfxCard: {
+    border: '1px solid var(--border-medium)',
+    backgroundColor: 'var(--page-bg)',
+    padding: '0.55rem 0.6rem',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.25rem',
+  },
+  sfxCardActive: {
+    border: '2px solid var(--accent-deep)',
+    backgroundColor: 'var(--hover-bg)',
+    padding: '0.5rem 0.55rem',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.25rem',
+  },
+  sfxCardTop: {
+    display: 'flex',
+    alignItems: 'baseline',
+    gap: '0.5rem',
+    justifyContent: 'space-between',
+  },
+  sfxDur: {
+    fontSize: '0.68rem',
+    color: 'var(--ink-faint)',
+    whiteSpace: 'nowrap',
+  },
+  sfxCardFooter: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 'auto',
+    gap: '0.5rem',
+  },
+  sfxAttrib: {
+    fontSize: '0.65rem',
+    color: 'var(--ink-faint)',
+    fontStyle: 'italic',
   },
 };

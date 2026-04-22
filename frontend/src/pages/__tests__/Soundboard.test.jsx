@@ -48,14 +48,14 @@ const MOCK_CATALOG = {
 };
 
 function mockFetchCatalog(catalog = MOCK_CATALOG) {
-  global.fetch = vi.fn().mockResolvedValueOnce({
+  globalThis.fetch = vi.fn().mockResolvedValueOnce({
     ok: true,
     json: () => Promise.resolve(catalog),
   });
 }
 
 function mockFetchError(message = 'Network error') {
-  global.fetch = vi.fn().mockRejectedValueOnce(new Error(message));
+  globalThis.fetch = vi.fn().mockRejectedValueOnce(new Error(message));
 }
 
 // ---------------------------------------------------------------------------
@@ -67,7 +67,10 @@ describe('Soundboard', () => {
 
   beforeEach(() => {
     mockPlayTrack.mockReset();
-    useSoundboard.mockReturnValue({ currentTrack: null, playTrack: mockPlayTrack });
+    useSoundboard.mockReturnValue({
+      currentTrack: null,
+      playTrack: mockPlayTrack,
+    });
   });
 
   afterEach(() => {
@@ -75,7 +78,7 @@ describe('Soundboard', () => {
   });
 
   it('shows loading state before catalog arrives', () => {
-    global.fetch = vi.fn().mockReturnValue(new Promise(() => {}));
+    globalThis.fetch = vi.fn().mockReturnValue(new Promise(() => {}));
     render(<Soundboard />);
     expect(screen.getByText(/loading catalog/i)).toBeInTheDocument();
   });
@@ -87,7 +90,9 @@ describe('Soundboard', () => {
   });
 
   it('shows error when response is not ok', async () => {
-    global.fetch = vi.fn().mockResolvedValueOnce({ ok: false, status: 503 });
+    globalThis.fetch = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: false, status: 503 });
     render(<Soundboard />);
     await screen.findByText(/503/i);
   });
@@ -221,5 +226,260 @@ describe('Soundboard', () => {
     await screen.findByText('Tavern Music');
 
     expect(screen.getByRole('button', { name: 'Play' })).toBeDisabled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Phase 3 — SFX panel
+// ---------------------------------------------------------------------------
+
+const MOCK_SFX_RESULTS = {
+  count: 2,
+  results: [
+    {
+      id: 'freesound:123',
+      source: 'freesound',
+      external_id: '123',
+      title: 'Thunder Crack',
+      url: 'https://cdn.freesound.org/previews/1/123-hq.mp3',
+      tags: ['thunder', 'storm'],
+      duration: 3.5,
+      license: 'https://creativecommons.org/licenses/by/4.0/',
+      attribution: 'storm_user',
+    },
+    {
+      id: 'freesound:456',
+      source: 'freesound',
+      external_id: '456',
+      title: 'Door Slam',
+      url: 'https://cdn.freesound.org/previews/4/456-hq.mp3',
+      tags: ['door', 'impact'],
+      duration: 1.2,
+      license: 'https://creativecommons.org/publicdomain/zero/1.0/',
+      attribution: 'door_user',
+    },
+  ],
+};
+
+function mockFetchWithSfxSupport(sfxData = MOCK_SFX_RESULTS) {
+  globalThis.fetch = vi.fn((url) => {
+    if (url.includes('catalog')) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve(MOCK_CATALOG),
+      });
+    }
+    if (url.includes('sfx/search')) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve(sfxData),
+      });
+    }
+    return Promise.reject(new Error(`Unexpected fetch URL: ${url}`));
+  });
+}
+
+describe('Soundboard SFX panel', () => {
+  const mockPlayTrack = vi.fn();
+  const mockPlaySfx = vi.fn();
+
+  beforeEach(() => {
+    mockPlayTrack.mockReset();
+    mockPlaySfx.mockReset();
+    useSoundboard.mockReturnValue({
+      currentTrack: null,
+      playTrack: mockPlayTrack,
+      sfxTrack: null,
+      playSfx: mockPlaySfx,
+    });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('renders Ambient and SFX tab buttons', () => {
+    globalThis.fetch = vi.fn().mockReturnValue(new Promise(() => {}));
+    render(<Soundboard />);
+    expect(screen.getByRole('button', { name: 'Ambient' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'SFX' })).toBeInTheDocument();
+  });
+
+  it('shows catalog search by default (Ambient panel active)', async () => {
+    mockFetchCatalog();
+    render(<Soundboard />);
+    await screen.findByText('Tavern Music');
+    expect(screen.getByPlaceholderText(/search tracks/i)).toBeInTheDocument();
+  });
+
+  it('clicking SFX tab shows SFX search form', async () => {
+    globalThis.fetch = vi.fn().mockReturnValue(new Promise(() => {}));
+    render(<Soundboard />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'SFX' }));
+
+    expect(
+      screen.getByRole('textbox', { name: 'Search SFX' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByPlaceholderText(/search tracks/i),
+    ).not.toBeInTheDocument();
+  });
+
+  it('clicking SFX tab hides the ambient catalog body', async () => {
+    mockFetchCatalog();
+    render(<Soundboard />);
+    await screen.findByText('Tavern Music');
+
+    fireEvent.click(screen.getByRole('button', { name: 'SFX' }));
+
+    expect(screen.queryByText('Tavern Music')).not.toBeInTheDocument();
+  });
+
+  it('SFX search fetches from the sfx/search endpoint', async () => {
+    mockFetchWithSfxSupport();
+    render(<Soundboard />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'SFX' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Search SFX' }), {
+      target: { value: 'thunder' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+
+    await screen.findByText('Thunder Crack');
+
+    const fetchCalls = globalThis.fetch.mock.calls.map(([url]) => url);
+    expect(fetchCalls.some((url) => url.includes('sfx/search'))).toBe(true);
+  });
+
+  it('SFX search encodes the query in the URL', async () => {
+    mockFetchWithSfxSupport();
+    render(<Soundboard />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'SFX' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Search SFX' }), {
+      target: { value: 'door slam' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+
+    await screen.findByText('Thunder Crack');
+
+    const sfxCall = globalThis.fetch.mock.calls.find(([url]) =>
+      url.includes('sfx/search'),
+    );
+    expect(sfxCall[0]).toContain('door+slam');
+  });
+
+  it('renders SFX result titles after a successful search', async () => {
+    mockFetchWithSfxSupport();
+    render(<Soundboard />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'SFX' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Search SFX' }), {
+      target: { value: 'thunder' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+
+    await screen.findByText('Thunder Crack');
+    expect(screen.getByText('Door Slam')).toBeInTheDocument();
+  });
+
+  it('calls playSfx with the clip when Play is clicked', async () => {
+    mockFetchWithSfxSupport();
+    render(<Soundboard />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'SFX' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Search SFX' }), {
+      target: { value: 'thunder' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+
+    await screen.findByText('Thunder Crack');
+    const playBtns = screen.getAllByRole('button', { name: 'Play' });
+    fireEvent.click(playBtns[0]);
+
+    expect(mockPlaySfx).toHaveBeenCalledOnce();
+    expect(mockPlaySfx).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Thunder Crack' }),
+    );
+  });
+
+  it('shows Playing label on the active SFX clip', async () => {
+    useSoundboard.mockReturnValue({
+      currentTrack: null,
+      playTrack: mockPlayTrack,
+      sfxTrack: { id: 'freesound:123' },
+      playSfx: mockPlaySfx,
+    });
+    mockFetchWithSfxSupport();
+    render(<Soundboard />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'SFX' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Search SFX' }), {
+      target: { value: 'thunder' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+
+    await screen.findByText('Thunder Crack');
+    expect(screen.getByRole('button', { name: 'Playing' })).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Play' })).toHaveLength(1);
+  });
+
+  it('shows error message when SFX search fails', async () => {
+    globalThis.fetch = vi.fn((url) => {
+      if (url.includes('catalog')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(MOCK_CATALOG),
+        });
+      }
+      return Promise.reject(new Error('Freesound unreachable'));
+    });
+    render(<Soundboard />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'SFX' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Search SFX' }), {
+      target: { value: 'thunder' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+
+    await screen.findByText(/freesound unreachable/i);
+  });
+
+  it('shows no-results message when search returns empty list', async () => {
+    globalThis.fetch = vi.fn((url) => {
+      if (url.includes('catalog')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(MOCK_CATALOG),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ count: 0, results: [] }),
+      });
+    });
+    render(<Soundboard />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'SFX' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Search SFX' }), {
+      target: { value: 'xyzzy' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+
+    await screen.findByText(/no results found/i);
+  });
+
+  it('shows sfx badge on SFX tab when sfxTrack is active', () => {
+    useSoundboard.mockReturnValue({
+      currentTrack: null,
+      playTrack: mockPlayTrack,
+      sfxTrack: { id: 'freesound:123', title: 'Thunder Crack' },
+      playSfx: mockPlaySfx,
+    });
+    globalThis.fetch = vi.fn().mockReturnValue(new Promise(() => {}));
+    render(<Soundboard />);
+
+    expect(screen.getByText('•')).toBeInTheDocument();
   });
 });

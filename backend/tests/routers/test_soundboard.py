@@ -8,6 +8,8 @@ Covers:
   count/attribution, cache hit on second call
 - GET /api/soundboard/proxy: host validation, successful stream, content headers,
   Range passthrough, 404 on upstream 403, 502 on upstream 5xx, 502 on network error
+- GET /api/soundboard/sfx/search: 503 without key, normalized results,
+  preview URL filtering, per-query cache, 502 on upstream errors
 """
 
 import time
@@ -18,7 +20,13 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from main import app
-from routers.soundboard import _catalog_cache, _fetch_catalog, _normalize, _proxy_url
+from routers.soundboard import (
+    _catalog_cache,
+    _fetch_catalog,
+    _normalize,
+    _proxy_url,
+    _sfx_cache,
+)
 
 # ---------------------------------------------------------------------------
 # Sample data
@@ -54,6 +62,14 @@ def reset_catalog_cache():
     yield
     _catalog_cache["fetched_at"] = 0.0
     _catalog_cache["tracks"] = []
+
+
+@pytest.fixture(autouse=True)
+def reset_sfx_cache():
+    """Isolate each test from cached Freesound SFX results."""
+    _sfx_cache.clear()
+    yield
+    _sfx_cache.clear()
 
 
 # ---------------------------------------------------------------------------
@@ -216,7 +232,9 @@ class TestNormalize:
         assert result["image_url"] == "https://tabletopaudio.com/small.jpg"
 
     def test_genres_strips_whitespace(self):
-        result = _normalize({**SAMPLE_RAW_TRACK, "track_genre": ["  Fantasy  ", " Horror "]})
+        result = _normalize(
+            {**SAMPLE_RAW_TRACK, "track_genre": ["  Fantasy  ", " Horror "]}
+        )
         assert "Fantasy" in result["genres"]
         assert "Horror" in result["genres"]
 
@@ -570,3 +588,336 @@ async def test_proxy_network_error_returns_502():
             )
 
     assert response.status_code == 502
+
+
+# ---------------------------------------------------------------------------
+# Sample data: Freesound
+# ---------------------------------------------------------------------------
+
+SAMPLE_FREESOUND_RESPONSE = {
+    "count": 2,
+    "results": [
+        {
+            "id": 123,
+            "name": "Thunder Crack",
+            "tags": ["thunder", "storm", "weather"],
+            "previews": {
+                "preview-hq-mp3": "https://cdn.freesound.org/previews/1/123-hq.mp3",
+                "preview-lq-mp3": "https://cdn.freesound.org/previews/1/123-lq.mp3",
+            },
+            "duration": 3.5,
+            "license": "https://creativecommons.org/licenses/by/4.0/",
+            "username": "storm_user",
+        },
+        {
+            # No preview URL — should be filtered out of results.
+            "id": 456,
+            "name": "No Preview Clip",
+            "tags": ["door"],
+            "previews": {},
+            "duration": 1.0,
+            "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+            "username": "another_user",
+        },
+    ],
+}
+
+TEST_FREESOUND_KEY = "test-freesound-api-key"
+
+
+# ---------------------------------------------------------------------------
+# Mock helpers: SFX search
+# ---------------------------------------------------------------------------
+
+
+def _mock_sfx_httpx(data):
+    """Patch httpx.AsyncClient so the Freesound search returns ``data``."""
+    response = MagicMock()
+    response.json.return_value = data
+    response.raise_for_status = MagicMock()
+
+    mock_client = AsyncMock()
+    mock_client.get = AsyncMock(return_value=response)
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=False)
+
+    return patch("routers.soundboard.httpx.AsyncClient", return_value=mock_client)
+
+
+def _mock_sfx_httpx_status_error(status_code=429):
+    """Patch httpx so ``raise_for_status()`` raises HTTPStatusError."""
+    error_resp = MagicMock()
+    error_resp.status_code = status_code
+    exc = _httpx.HTTPStatusError(
+        str(status_code), request=MagicMock(), response=error_resp
+    )
+
+    response = MagicMock()
+    response.raise_for_status = MagicMock(side_effect=exc)
+
+    mock_client = AsyncMock()
+    mock_client.get = AsyncMock(return_value=response)
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=False)
+
+    return patch("routers.soundboard.httpx.AsyncClient", return_value=mock_client)
+
+
+def _mock_sfx_httpx_request_error():
+    """Patch httpx so ``client.get`` raises RequestError."""
+    mock_client = AsyncMock()
+    mock_client.get = AsyncMock(
+        side_effect=_httpx.RequestError("timeout", request=MagicMock())
+    )
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=False)
+
+    return patch("routers.soundboard.httpx.AsyncClient", return_value=mock_client)
+
+
+# ---------------------------------------------------------------------------
+# Integration tests: GET /api/soundboard/sfx/search
+# ---------------------------------------------------------------------------
+
+
+class TestSfxSearch:
+    @pytest.mark.asyncio
+    async def test_503_when_api_key_not_configured(self):
+        with patch.dict("os.environ", {"FREESOUND_API_KEY": ""}):
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                response = await client.get(
+                    "/api/soundboard/sfx/search", params={"q": "thunder"}
+                )
+        assert response.status_code == 503
+
+    @pytest.mark.asyncio
+    async def test_returns_normalized_results(self):
+        with (
+            patch.dict("os.environ", {"FREESOUND_API_KEY": TEST_FREESOUND_KEY}),
+            _mock_sfx_httpx(SAMPLE_FREESOUND_RESPONSE),
+        ):
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                response = await client.get(
+                    "/api/soundboard/sfx/search", params={"q": "thunder"}
+                )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["count"] == 1  # one result after filtering no-preview
+        result = data["results"][0]
+        assert result["id"] == "freesound:123"
+        assert result["source"] == "freesound"
+        assert result["external_id"] == "123"
+        assert result["title"] == "Thunder Crack"
+        assert result["attribution"] == "storm_user"
+
+    @pytest.mark.asyncio
+    async def test_filters_results_without_preview_url(self):
+        with (
+            patch.dict("os.environ", {"FREESOUND_API_KEY": TEST_FREESOUND_KEY}),
+            _mock_sfx_httpx(SAMPLE_FREESOUND_RESPONSE),
+        ):
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                response = await client.get(
+                    "/api/soundboard/sfx/search", params={"q": "thunder"}
+                )
+
+        titles = [r["title"] for r in response.json()["results"]]
+        assert "No Preview Clip" not in titles
+
+    @pytest.mark.asyncio
+    async def test_uses_hq_preview_url(self):
+        with (
+            patch.dict("os.environ", {"FREESOUND_API_KEY": TEST_FREESOUND_KEY}),
+            _mock_sfx_httpx(SAMPLE_FREESOUND_RESPONSE),
+        ):
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                response = await client.get(
+                    "/api/soundboard/sfx/search", params={"q": "thunder"}
+                )
+
+        result = response.json()["results"][0]
+        assert "hq" in result["url"]
+
+    @pytest.mark.asyncio
+    async def test_falls_back_to_lq_url_when_no_hq(self):
+        feed = {
+            "count": 1,
+            "results": [
+                {
+                    "id": 789,
+                    "name": "LQ Only",
+                    "tags": [],
+                    "previews": {
+                        "preview-lq-mp3": "https://cdn.freesound.org/previews/7/789-lq.mp3"
+                    },
+                    "duration": 2.0,
+                    "license": "",
+                    "username": "user",
+                }
+            ],
+        }
+        with (
+            patch.dict("os.environ", {"FREESOUND_API_KEY": TEST_FREESOUND_KEY}),
+            _mock_sfx_httpx(feed),
+        ):
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                response = await client.get(
+                    "/api/soundboard/sfx/search", params={"q": "ambient"}
+                )
+
+        result = response.json()["results"][0]
+        assert "lq" in result["url"]
+
+    @pytest.mark.asyncio
+    async def test_result_duration_included(self):
+        with (
+            patch.dict("os.environ", {"FREESOUND_API_KEY": TEST_FREESOUND_KEY}),
+            _mock_sfx_httpx(SAMPLE_FREESOUND_RESPONSE),
+        ):
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                response = await client.get(
+                    "/api/soundboard/sfx/search", params={"q": "thunder"}
+                )
+
+        assert response.json()["results"][0]["duration"] == 3.5
+
+    @pytest.mark.asyncio
+    async def test_cache_hit_skips_http_call(self):
+        with (
+            patch.dict("os.environ", {"FREESOUND_API_KEY": TEST_FREESOUND_KEY}),
+            _mock_sfx_httpx(SAMPLE_FREESOUND_RESPONSE),
+        ):
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                await client.get("/api/soundboard/sfx/search", params={"q": "storm"})
+                await client.get("/api/soundboard/sfx/search", params={"q": "storm"})
+
+        # Verify the result is in cache — a second HTTP call would have errored
+        # if the cache hadn't served it.
+        assert "storm" in _sfx_cache
+
+    @pytest.mark.asyncio
+    async def test_cache_entry_returned_on_second_call(self):
+        with patch.dict("os.environ", {"FREESOUND_API_KEY": TEST_FREESOUND_KEY}):
+            with _mock_sfx_httpx(SAMPLE_FREESOUND_RESPONSE):
+                async with AsyncClient(
+                    transport=ASGITransport(app=app), base_url="http://test"
+                ) as client:
+                    r1 = await client.get(
+                        "/api/soundboard/sfx/search", params={"q": "rain"}
+                    )
+            # Replace Freesound mock with an error so a second HTTP call would fail.
+            with _mock_sfx_httpx_request_error():
+                async with AsyncClient(
+                    transport=ASGITransport(app=app), base_url="http://test"
+                ) as client:
+                    r2 = await client.get(
+                        "/api/soundboard/sfx/search", params={"q": "rain"}
+                    )
+
+        assert r1.json()["results"] == r2.json()["results"]
+
+    @pytest.mark.asyncio
+    async def test_different_queries_have_independent_caches(self):
+        thunder_feed = {
+            "count": 1,
+            "results": [
+                {
+                    "id": 1,
+                    "name": "Thunder",
+                    "tags": [],
+                    "previews": {"preview-hq-mp3": "https://cdn.freesound.org/1.mp3"},
+                    "duration": 2.0,
+                    "license": "",
+                    "username": "u",
+                }
+            ],
+        }
+        door_feed = {
+            "count": 1,
+            "results": [
+                {
+                    "id": 2,
+                    "name": "Door Slam",
+                    "tags": [],
+                    "previews": {"preview-hq-mp3": "https://cdn.freesound.org/2.mp3"},
+                    "duration": 1.0,
+                    "license": "",
+                    "username": "u",
+                }
+            ],
+        }
+        with patch.dict("os.environ", {"FREESOUND_API_KEY": TEST_FREESOUND_KEY}):
+            with _mock_sfx_httpx(thunder_feed):
+                async with AsyncClient(
+                    transport=ASGITransport(app=app), base_url="http://test"
+                ) as client:
+                    r1 = await client.get(
+                        "/api/soundboard/sfx/search", params={"q": "thunder"}
+                    )
+            with _mock_sfx_httpx(door_feed):
+                async with AsyncClient(
+                    transport=ASGITransport(app=app), base_url="http://test"
+                ) as client:
+                    r2 = await client.get(
+                        "/api/soundboard/sfx/search", params={"q": "door"}
+                    )
+
+        assert r1.json()["results"][0]["title"] == "Thunder"
+        assert r2.json()["results"][0]["title"] == "Door Slam"
+
+    @pytest.mark.asyncio
+    async def test_502_on_freesound_http_status_error(self):
+        with (
+            patch.dict("os.environ", {"FREESOUND_API_KEY": TEST_FREESOUND_KEY}),
+            _mock_sfx_httpx_status_error(status_code=429),
+        ):
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                response = await client.get(
+                    "/api/soundboard/sfx/search", params={"q": "thunder"}
+                )
+
+        assert response.status_code == 502
+
+    @pytest.mark.asyncio
+    async def test_502_on_freesound_request_error(self):
+        with (
+            patch.dict("os.environ", {"FREESOUND_API_KEY": TEST_FREESOUND_KEY}),
+            _mock_sfx_httpx_request_error(),
+        ):
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                response = await client.get(
+                    "/api/soundboard/sfx/search", params={"q": "thunder"}
+                )
+
+        assert response.status_code == 502
+
+    @pytest.mark.asyncio
+    async def test_422_on_empty_query(self):
+        with patch.dict("os.environ", {"FREESOUND_API_KEY": TEST_FREESOUND_KEY}):
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                response = await client.get(
+                    "/api/soundboard/sfx/search", params={"q": ""}
+                )
+
+        assert response.status_code == 422

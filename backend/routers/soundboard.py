@@ -15,11 +15,12 @@ backend proxies the request and injects the header. The proxy validates the
 target host before forwarding to prevent SSRF.
 """
 
+import os
 import time
 from urllib.parse import unquote, urlencode, urlparse
 
 import httpx
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
@@ -33,6 +34,13 @@ TABLETOP_AUDIO_CATALOG_URL = "https://tabletopaudio.com/tta_data"
 ALLOWED_AUDIO_HOST = "sounds.tabletopaudio.com"
 PROXY_REFERER = "https://tabletopaudio.com/"
 CACHE_TTL_SECONDS = 24 * 60 * 60
+
+FREESOUND_API_BASE = "https://freesound.org/apiv2"
+FREESOUND_FIELDS = "id,name,tags,previews,duration,license,username"
+SFX_CACHE_TTL = 300  # 5 minutes — Freesound rate limits: 60 req/min, 2000 req/day
+
+# In-memory SFX cache: maps lowercased query string to {results, fetched_at}.
+_sfx_cache: dict[str, dict] = {}
 
 # In-memory catalog cache. Keyed by "fetched_at" (float timestamp) and
 # "tracks" (list of normalized dicts). Survives across requests for the
@@ -250,6 +258,82 @@ async def proxy_audio(url: str, request: Request):
 
 
 # ---------------------------------------------------------------------------
+# SFX search (Phase 3)
+# ---------------------------------------------------------------------------
+
+
+@router.get("/soundboard/sfx/search")
+async def sfx_search(
+    q: str = Query(..., min_length=1),
+    page_size: int = Query(default=15, ge=1, le=50),
+):
+    """Search Freesound for one-shot SFX clips.
+
+    Requires ``FREESOUND_API_KEY`` in the backend environment. Results are
+    cached per query for ``SFX_CACHE_TTL`` seconds to stay within Freesound's
+    rate limits. Preview CDN URLs are returned directly — no proxy is required
+    because HTML5 audio does not enforce CORS during playback.
+    """
+    api_key = os.getenv("FREESOUND_API_KEY")
+    if not api_key:
+        raise HTTPException(
+            status_code=503,
+            detail="SFX search is not configured. Add FREESOUND_API_KEY to the backend environment.",
+        )
+
+    cache_key = q.lower().strip()
+    cached = _sfx_cache.get(cache_key)
+    if cached and (time.time() - cached["fetched_at"]) < SFX_CACHE_TTL:
+        return {"count": len(cached["results"]), "results": cached["results"]}
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            res = await client.get(
+                f"{FREESOUND_API_BASE}/search/text/",
+                params={
+                    "query": q,
+                    "fields": FREESOUND_FIELDS,
+                    "page_size": page_size,
+                    "token": api_key,
+                },
+            )
+            res.raise_for_status()
+            data = res.json()
+    except httpx.HTTPStatusError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Freesound returned {exc.response.status_code}.",
+        ) from exc
+    except httpx.RequestError as exc:
+        raise HTTPException(
+            status_code=502, detail=f"Freesound unreachable: {exc}"
+        ) from exc
+
+    results = []
+    for sound in data.get("results") or []:
+        previews = sound.get("previews") or {}
+        url = previews.get("preview-hq-mp3") or previews.get("preview-lq-mp3") or ""
+        if not url:
+            continue
+        results.append(
+            {
+                "id": f"freesound:{sound['id']}",
+                "source": "freesound",
+                "external_id": str(sound["id"]),
+                "title": sound.get("name") or "Untitled",
+                "url": url,
+                "tags": (sound.get("tags") or [])[:10],
+                "duration": sound.get("duration"),
+                "license": sound.get("license") or "",
+                "attribution": sound.get("username") or "",
+            }
+        )
+
+    _sfx_cache[cache_key] = {"results": results, "fetched_at": time.time()}
+    return {"count": len(results), "results": results}
+
+
+# ---------------------------------------------------------------------------
 # Catalog DB sync (Phase 2)
 # ---------------------------------------------------------------------------
 
@@ -338,7 +422,9 @@ async def suggest_tracks(body: SuggestRequest):
         role="dm",
     )
 
-    prompt = f"session_id: {body.session_id}\n\nSuggest 3 ambient tracks for this session."
+    prompt = (
+        f"session_id: {body.session_id}\n\nSuggest 3 ambient tracks for this session."
+    )
     if body.scene_hint:
         prompt += f"\nAdditional context from the DM: {body.scene_hint}"
 
