@@ -5,6 +5,15 @@ import { useSoundboard } from '../../context/useSoundboard';
 
 vi.mock('../../context/useSoundboard');
 
+vi.mock('../../lib/supabase', () => {
+  const chain = {
+    select: vi.fn().mockReturnThis(),
+    eq: vi.fn().mockReturnThis(),
+    order: vi.fn().mockResolvedValue({ data: [] }),
+  };
+  return { supabase: { from: vi.fn().mockReturnValue(chain) } };
+});
+
 // ---------------------------------------------------------------------------
 // Fixtures
 // ---------------------------------------------------------------------------
@@ -367,7 +376,7 @@ describe('Soundboard SFX panel', () => {
     const sfxCall = globalThis.fetch.mock.calls.find(([url]) =>
       url.includes('sfx/search'),
     );
-    expect(sfxCall[0]).toContain('door+slam');
+    expect(sfxCall[0]).toContain('door%20slam');
   });
 
   it('renders SFX result titles after a successful search', async () => {
@@ -414,7 +423,7 @@ describe('Soundboard SFX panel', () => {
     mockFetchWithSfxSupport();
     render(<Soundboard />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'SFX' }));
+    fireEvent.click(screen.getByRole('button', { name: /SFX/ }));
     fireEvent.change(screen.getByRole('textbox', { name: 'Search SFX' }), {
       target: { value: 'thunder' },
     });

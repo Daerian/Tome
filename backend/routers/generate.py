@@ -93,7 +93,7 @@ class SoundboardSuggestResult(BaseModel):
 
 soundboard_agent = Agent(
     model,
-    result_type=SoundboardSuggestResult,
+    output_type=SoundboardSuggestResult,
     system_prompt=(
         "You are a D&D scene music curator for the app Tome. "
         "Given a campaign session's context, select exactly 3 ambient music tracks "
