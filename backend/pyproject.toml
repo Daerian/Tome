@@ -51,3 +51,6 @@ indent-style = "space"
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+markers = [
+  "integration: marks tests as integration tests (multi-step flows with stateful mocks)",
+]

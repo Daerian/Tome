@@ -1,6 +1,6 @@
 # Tome
 
-A D&D campaign companion that helps Dungeon Masters and players manage sessions, characters, locations, story beats, and more. Tome uses AI (via the Anthropic API) to generate session recaps, preparation briefs, story beat extraction, and in-game reference lookups.
+A D&D campaign companion that helps Dungeon Masters and players manage sessions, characters, locations, story beats, and more. Tome uses AI (via the Anthropic API) to generate session recaps, preparation briefs, story beat extraction, and in-game reference lookups. DMs also get an in-app soundboard to browse and play ambient audio tracks, keeping the mood without leaving the app.
 
 ## Tech Stack
 
@@ -22,7 +22,7 @@ tome/
       lib/         Supabase client, auth hooks
     public/        Static assets
   backend/         FastAPI application
-    routers/       API route handlers
+    routers/       API route handlers (chat, recap, prep, reference, soundboard, …)
     tools/         AI tool definitions (campaign data, D&D references)
     tests/         Pytest test suite
   supabase/        Database migrations

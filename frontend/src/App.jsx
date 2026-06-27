@@ -9,6 +9,8 @@ import CreateCampaign from './pages/CreateCampaign';
 import JoinCampaign from './pages/JoinCampaign';
 import CampaignView from './pages/CampaignView';
 import Account from './pages/Account';
+import { SoundboardProvider } from './context/SoundboardProvider';
+import SoundboardPlayer from './components/SoundboardPlayer';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 
 export default function App() {
@@ -36,32 +38,35 @@ export default function App() {
   }
 
   return (
-    <BrowserRouter>
-      <Layout profile={profile} onSignOut={signOut}>
-        <Routes>
-          <Route path="/" element={<Home session={session} />} />
-          <Route
-            path="/campaign/new"
-            element={<CreateCampaign session={session} />}
-          />
-          <Route path="/campaign/join" element={<JoinCampaign />} />
-          <Route
-            path="/campaign/:id"
-            element={<CampaignView session={session} />}
-          />
-          <Route
-            path="/account"
-            element={
-              <Account
-                session={session}
-                profile={profile}
-                updateProfile={updateProfile}
-              />
-            }
-          />
-        </Routes>
-      </Layout>
-      <SpeedInsights />
-    </BrowserRouter>
+    <SoundboardProvider>
+      <BrowserRouter>
+        <Layout profile={profile} onSignOut={signOut}>
+          <Routes>
+            <Route path="/" element={<Home session={session} />} />
+            <Route
+              path="/campaign/new"
+              element={<CreateCampaign session={session} />}
+            />
+            <Route path="/campaign/join" element={<JoinCampaign />} />
+            <Route
+              path="/campaign/:id"
+              element={<CampaignView session={session} />}
+            />
+            <Route
+              path="/account"
+              element={
+                <Account
+                  session={session}
+                  profile={profile}
+                  updateProfile={updateProfile}
+                />
+              }
+            />
+          </Routes>
+        </Layout>
+        <SoundboardPlayer />
+        <SpeedInsights />
+      </BrowserRouter>
+    </SoundboardProvider>
   );
 }
